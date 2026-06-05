@@ -209,6 +209,18 @@ function fillForm(e) {
   updateCalcPreview();
 }
 
+function timbraOra(fieldId) {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const el = document.getElementById(fieldId);
+  if (el) {
+    el.value = `${hh}:${mm}`;
+    updateCalcPreview();
+    showToast(fieldId === 'entry-checkin' ? `Entrata: ${hh}:${mm}` : `Uscita: ${hh}:${mm}`, 'success');
+  }
+}
+
 function updateCalcPreview() {
   const checkIn = document.getElementById('entry-checkin').value;
   const checkOut = document.getElementById('entry-checkout').value;
@@ -349,8 +361,11 @@ async function renderHistory() {
       </div>
       <div class="history-center">
         <span>${e.checkIn || '—'} → ${e.checkOut || '—'}</span>
-        <span class="history-hours">${formatHours(e.workedHours)} ore</span>
-        ${(() => { const bal = calcDailyBalance(e); return bal !== 0 ? `<span class="badge ${bal > 0 ? 'badge-ok' : 'badge-warn'}">${bal > 0 ? '+' : ''}${formatHours(bal)}</span>` : ''; })()}
+        <span class="history-hours">
+          ${formatHours(e.workedHours)} ore
+          ${(() => { const diff = e.difference || 0; return diff !== 0 ? `<span class="history-diff ${diff > 0 ? 'positive' : 'negative'}">(${diff > 0 ? '+' : ''}${formatHours(diff)})</span>` : ''; })()}
+        </span>
+        ${(() => { const bal = calcDailyBalance(e); return bal !== 0 ? `<span class="badge ${bal > 0 ? 'badge-ok' : 'badge-warn'}">Saldo: ${bal > 0 ? '+' : ''}${formatHours(bal)}</span>` : ''; })()}
         ${e.ticket ? '<span class="badge badge-ok">🎫 Ticket</span>' : ''}
         ${e.travel ? '<span class="badge badge-trasferta">✈ Trasferta</span>' : ''}
         ${e.notes ? `<span class="history-note">${e.notes}</span>` : ''}
