@@ -10,8 +10,8 @@
   <meta name="theme-color" content="#1e3a5f">
   <title>Presenze MUNAF</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.svg">
-  <link rel="icon" href="icon-192.svg">
+  <link rel="apple-touch-icon" href="assets/icon-192.svg">
+  <link rel="icon" href="assets/icon-192.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -67,46 +67,8 @@
           </select>
         </div>
       </div>
-      <div class="setup-section">
-        <div class="setup-section-title">Sicurezza (opzionale)</div>
-        <label class="toggle-row">
-          <span>Abilita PIN</span>
-          <span class="toggle">
-            <input type="checkbox" id="setup-pin-enabled"
-              onchange="document.getElementById('setup-pin-row').style.display=this.checked?'flex':'none'">
-            <span class="toggle-slider"></span>
-          </span>
-        </label>
-        <div class="setup-field" id="setup-pin-row" style="display:none;">
-          <label>PIN (4 cifre)</label>
-          <input type="password" id="setup-pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••">
-        </div>
-      </div>
       <button class="btn-save" onclick="saveSetup()">Inizia a usare l'app →</button>
     </div>
-  </div>
-
-  <!-- ========== PIN ========== -->
-  <div id="view-pin" class="view">
-    <div class="pin-logo">🔒</div>
-    <div class="pin-title">Presenze MUNAF</div>
-    <div class="pin-subtitle">Inserisci il PIN per continuare</div>
-    <div id="pin-display"></div>
-    <div class="pin-pad">
-      <button class="pin-key" onclick="pinKey('1')">1</button>
-      <button class="pin-key" onclick="pinKey('2')">2</button>
-      <button class="pin-key" onclick="pinKey('3')">3</button>
-      <button class="pin-key" onclick="pinKey('4')">4</button>
-      <button class="pin-key" onclick="pinKey('5')">5</button>
-      <button class="pin-key" onclick="pinKey('6')">6</button>
-      <button class="pin-key" onclick="pinKey('7')">7</button>
-      <button class="pin-key" onclick="pinKey('8')">8</button>
-      <button class="pin-key" onclick="pinKey('9')">9</button>
-      <button class="pin-key empty"></button>
-      <button class="pin-key" onclick="pinKey('0')">0</button>
-      <button class="pin-key del" onclick="pinKey('del')">⌫</button>
-    </div>
-    <div id="pin-error"></div>
   </div>
 
   <!-- ========== DASHBOARD ========== -->
@@ -169,7 +131,6 @@
           </div>
         </div>
       </div>
-
       <div class="calc-preview">
         <div class="calc-item">
           <div class="calc-item-label">Ore lavorate</div>
@@ -184,7 +145,6 @@
           <div class="calc-item-value" id="calc-diff">0:00</div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">Presenza</div>
         <div class="field-row">
@@ -208,7 +168,6 @@
           </div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">Assenze</div>
         <div class="field-row">
@@ -228,7 +187,6 @@
           </div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">Ore Aggiuntive (autorizzate)</div>
         <div class="field-row">
@@ -252,7 +210,6 @@
           </div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">Trasferta</div>
         <label class="toggle-row" style="border-bottom:1px solid var(--border);">
@@ -270,7 +227,6 @@
           </div>
         </div>
       </div>
-
       <div class="form-section">
         <div class="form-section-title">Note</div>
         <div class="field-row single">
@@ -280,7 +236,6 @@
           </div>
         </div>
       </div>
-
       <button class="btn-save" onclick="saveEntry_form()">💾 Salva giornata</button>
     </div>
   </div>
@@ -393,23 +348,7 @@
           </select>
         </div>
       </div>
-      <div class="settings-section">
-        <div class="settings-section-title">Sicurezza</div>
-        <label class="toggle-row" style="border-bottom:1px solid var(--border);">
-          <span>Abilita PIN</span>
-          <span class="toggle">
-            <input type="checkbox" id="set-pin-enabled"
-              onchange="document.getElementById('set-pin-row').style.display=this.checked?'flex':'none'">
-            <span class="toggle-slider"></span>
-          </span>
-        </label>
-        <div class="settings-field" id="set-pin-row" style="display:none;">
-          <label>PIN (4 cifre)</label>
-          <input type="password" id="set-pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••">
-        </div>
-      </div>
       <button class="btn-save" onclick="saveSettings()">💾 Salva impostazioni</button>
-
       <div class="settings-section" style="margin-top:12px;">
         <div class="settings-section-title">Backup dati</div>
       </div>
@@ -421,7 +360,6 @@
         onchange="importBackup(this.files[0])
           .then(()=>{ showToast('Backup ripristinato!','success'); this.value=''; })
           .catch(e=>showToast('Errore: '+e.message,'error'))">
-
       <div style="padding:16px; text-align:center; color:var(--subtext); font-size:12px;">
         Presenze MUNAF v1.0 — Dati salvati localmente sul dispositivo
       </div>
