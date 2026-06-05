@@ -861,3 +861,31 @@ select option { background: #1e293b; }
 @media (prefers-color-scheme: light) {
   select option { background: #f8fafc; }
 }
+
+.history-diff {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Bottoni Timbra */
+.timbre-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.btn-timbre {
+  padding: 12px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-timbre:active { transform: scale(0.95); }
+.btn-entrata { background: rgba(16,185,129,0.2); color: var(--success); border: 1px solid var(--success); }
+.btn-uscita  { background: rgba(239,68,68,0.2);  color: var(--danger);  border: 1px solid var(--danger); }
