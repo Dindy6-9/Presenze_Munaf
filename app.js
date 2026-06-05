@@ -7,9 +7,7 @@ let appSettings = {
   defaultContractHours: 7.5,
   contractHoursFriday: 7,
   defaultBreakMinutes: 30,
-  theme: 'grafite',
-  pinEnabled: false,
-  pin: ''
+  theme: 'grafite'
 };
 
 let currentView = 'dashboard';
@@ -29,19 +27,10 @@ async function init() {
   if (Object.keys(saved).length > 0) {
     appSettings = { ...appSettings, ...saved };
   }
-  // Normalizza i booleani salvati come stringa
-  appSettings.pinEnabled = appSettings.pinEnabled === true || appSettings.pinEnabled === 'true';
-
   applyTheme(appSettings.theme);
 
   if (!appSettings.employeeName) {
     showView('setup');
-    return;
-  }
-
-  // PIN solo se abilitato E pin non vuoto
-  if (appSettings.pinEnabled === true && appSettings.pin && appSettings.pin.length === 4) {
-    showPinLock();
     return;
   }
 
@@ -55,7 +44,7 @@ async function init() {
 
 function getContractHoursForDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  const day = d.getDay(); // 0=Dom, 5=Ven, 6=Sab
+  const day = d.getDay();
   if (day === 5) return parseFloat(appSettings.contractHoursFriday) || 7;
   if (day === 6 || day === 0) return 0;
   return parseFloat(appSettings.defaultContractHours) || 7.5;
@@ -101,49 +90,7 @@ function showView(name) {
     b.classList.toggle('active', b.dataset.view === name);
   });
   const nav = document.getElementById('bottom-nav');
-  if (nav) nav.style.display = ['setup', 'pin'].includes(name) ? 'none' : 'flex';
-}
-
-// =============================================
-// PIN LOCK
-// =============================================
-
-function showPinLock() {
-  showView('pin');
-  document.getElementById('pin-error').textContent = '';
-  window._pinInput = '';
-  renderPinDisplay();
-}
-
-function pinKey(val) {
-  if (val === 'del') {
-    window._pinInput = (window._pinInput || '').slice(0, -1);
-  } else if ((window._pinInput || '').length < 4) {
-    window._pinInput = (window._pinInput || '') + val;
-  }
-  renderPinDisplay();
-  if ((window._pinInput || '').length === 4) {
-    setTimeout(checkPin, 150);
-  }
-}
-
-function renderPinDisplay() {
-  const len = (window._pinInput || '').length;
-  const dots = Array.from({ length: 4 }, (_, i) =>
-    `<span class="pin-dot ${i < len ? 'filled' : ''}"></span>`
-  ).join('');
-  document.getElementById('pin-display').innerHTML = dots;
-}
-
-function checkPin() {
-  if (window._pinInput === String(appSettings.pin)) {
-    showView('dashboard');
-    refreshDashboard();
-  } else {
-    document.getElementById('pin-error').textContent = 'PIN errato. Riprova.';
-    window._pinInput = '';
-    renderPinDisplay();
-  }
+  if (nav) nav.style.display = name === 'setup' ? 'none' : 'flex';
 }
 
 // =============================================
@@ -154,20 +101,11 @@ async function saveSetup() {
   const name = document.getElementById('setup-name').value.trim();
   if (!name) { showToast('Inserisci il tuo nome', 'error'); return; }
 
-  const pinAbilitato = document.getElementById('setup-pin-enabled').checked;
-  const pinValore = document.getElementById('setup-pin').value.trim();
-
-  if (pinAbilitato && pinValore.length !== 4) {
-    showToast('Il PIN deve essere di 4 cifre', 'error'); return;
-  }
-
   appSettings.employeeName = name;
   appSettings.defaultContractHours = parseFloat(document.getElementById('setup-hours').value) || 7.5;
   appSettings.contractHoursFriday = parseFloat(document.getElementById('setup-hours-fri').value) || 7;
   appSettings.defaultBreakMinutes = parseInt(document.getElementById('setup-break').value) || 30;
   appSettings.theme = document.getElementById('setup-theme').value;
-  appSettings.pinEnabled = pinAbilitato;
-  appSettings.pin = pinAbilitato ? pinValore : '';
 
   for (const [k, v] of Object.entries(appSettings)) {
     await saveSetting(k, v);
@@ -512,31 +450,19 @@ async function doExportPDF() {
 // =============================================
 
 async function loadSettings() {
-  document.getElementById('set-name').value         = appSettings.employeeName || '';
-  document.getElementById('set-hours').value        = appSettings.defaultContractHours || 7.5;
-  document.getElementById('set-hours-fri').value    = appSettings.contractHoursFriday || 7;
-  document.getElementById('set-break').value        = appSettings.defaultBreakMinutes || 30;
-  document.getElementById('set-theme').value        = appSettings.theme || 'grafite';
-  document.getElementById('set-pin-enabled').checked = !!appSettings.pinEnabled;
-  document.getElementById('set-pin').value          = appSettings.pin || '';
-  document.getElementById('set-pin-row').style.display = appSettings.pinEnabled ? 'flex' : 'none';
+  document.getElementById('set-name').value      = appSettings.employeeName || '';
+  document.getElementById('set-hours').value     = appSettings.defaultContractHours || 7.5;
+  document.getElementById('set-hours-fri').value = appSettings.contractHoursFriday || 7;
+  document.getElementById('set-break').value     = appSettings.defaultBreakMinutes || 30;
+  document.getElementById('set-theme').value     = appSettings.theme || 'grafite';
 }
 
 async function saveSettings() {
-  const pinAbilitato = document.getElementById('set-pin-enabled').checked;
-  const pinValore    = document.getElementById('set-pin').value.trim();
-
-  if (pinAbilitato && pinValore.length !== 4) {
-    showToast('Il PIN deve essere di 4 cifre', 'error'); return;
-  }
-
   appSettings.employeeName         = document.getElementById('set-name').value.trim();
   appSettings.defaultContractHours = parseFloat(document.getElementById('set-hours').value) || 7.5;
   appSettings.contractHoursFriday  = parseFloat(document.getElementById('set-hours-fri').value) || 7;
   appSettings.defaultBreakMinutes  = parseInt(document.getElementById('set-break').value) || 30;
   appSettings.theme                = document.getElementById('set-theme').value;
-  appSettings.pinEnabled           = pinAbilitato;
-  appSettings.pin                  = pinAbilitato ? pinValore : '';
 
   for (const [k, v] of Object.entries(appSettings)) {
     await saveSetting(k, v);
