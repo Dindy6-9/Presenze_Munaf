@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Presenze MUNAF">
+  <meta name="theme-color" content="#1e3a5f">
+  <title>Presenze MUNAF</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.svg">
+  <link rel="icon" href="icon-192.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ========== SETUP ========== -->
+  <div id="view-setup" class="view active">
+    <div class="setup-hero">
+      <div class="setup-hero-icon">📋</div>
+      <h1>Presenze MUNAF</h1>
+      <p>Configurazione iniziale</p>
+    </div>
+    <div class="setup-body">
+      <div class="setup-section">
+        <div class="setup-section-title">Dati Personali</div>
+        <div class="setup-field">
+          <label>Nome e Cognome</label>
+          <input type="text" id="setup-name" placeholder="Es. Mario Rossi" autocomplete="name">
+        </div>
+      </div>
+      <div class="setup-section">
+        <div class="setup-section-title">Parametri Lavorativi</div>
+        <div class="setup-field">
+          <label>Ore giornaliere Lun–Gio</label>
+          <input type="number" id="setup-hours" value="7.5" min="1" max="12" step="0.5">
+        </div>
+        <div class="setup-field">
+          <label>Ore giornaliere Venerdì</label>
+          <input type="number" id="setup-hours-fri" value="7" min="0" max="12" step="0.5">
+        </div>
+        <div class="setup-field">
+          <label>Pausa predefinita (minuti)</label>
+          <select id="setup-break">
+            <option value="0">Nessuna</option>
+            <option value="30" selected>30 minuti</option>
+            <option value="60">60 minuti</option>
+          </select>
+        </div>
+      </div>
+      <div class="setup-section">
+        <div class="setup-section-title">Aspetto</div>
+        <div class="setup-field">
+          <label>Tema</label>
+          <select id="setup-theme" onchange="applyTheme(this.value)">
+            <option value="grafite">Grafite Blu</option>
+            <option value="petrolio">Verde Petrolio</option>
+            <option value="bordeaux">Bordeaux</option>
+            <option value="viola">Viola</option>
+            <option value="grigio">Grigio Professionale</option>
+            <option value="chiaro">Chiaro</option>
+          </select>
+        </div>
+      </div>
+      <div class="setup-section">
+        <div class="setup-section-title">Sicurezza (opzionale)</div>
+        <label class="toggle-row">
+          <span>Abilita PIN</span>
+          <span class="toggle">
+            <input type="checkbox" id="setup-pin-enabled"
+              onchange="document.getElementById('setup-pin-row').style.display=this.checked?'flex':'none'">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <div class="setup-field" id="setup-pin-row" style="display:none;">
+          <label>PIN (4 cifre)</label>
+          <input type="password" id="setup-pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••">
+        </div>
+      </div>
+      <button class="btn-save" onclick="saveSetup()">Inizia a usare l'app →</button>
+    </div>
+  </div>
+
+  <!-- ========== PIN ========== -->
+  <div id="view-pin" class="view">
+    <div class="pin-logo">🔒</div>
+    <div class="pin-title">Presenze MUNAF</div>
+    <div class="pin-subtitle">Inserisci il PIN per continuare</div>
+    <div id="pin-display"></div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key empty"></button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key del" onclick="pinKey('del')">⌫</button>
+    </div>
+    <div id="pin-error"></div>
+  </div>
+
+  <!-- ========== DASHBOARD ========== -->
+  <div id="view-dashboard" class="view">
+    <div class="dash-header">
+      <div class="dash-greeting">Benvenuta/o,</div>
+      <div class="dash-name" id="dash-name">—</div>
+      <div class="dash-month" id="dash-month">—</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Ore lavorate</div>
+        <div class="stat-value" id="dash-ore">0:00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ticket</div>
+        <div class="stat-value" id="dash-ticket">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Saldo ore</div>
+        <div class="stat-value" id="dash-saldo">0:00</div>
+      </div>
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">Ultima registrazione</div>
+      <div class="last-card" id="dash-last">Nessuna registrazione questo mese</div>
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">Accessi rapidi</div>
+    </div>
+    <div class="quick-actions">
+      <button class="quick-btn" onclick="openNewEntry()">
+        <span class="quick-btn-icon">➕</span>Nuova giornata
+      </button>
+      <button class="quick-btn" onclick="navigate('calendar')">
+        <span class="quick-btn-icon">📅</span>Calendario
+      </button>
+      <button class="quick-btn" onclick="navigate('history')">
+        <span class="quick-btn-icon">🗂️</span>Storico
+      </button>
+      <button class="quick-btn" onclick="navigate('report')">
+        <span class="quick-btn-icon">📊</span>Report
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== FORM GIORNATA ========== -->
+  <div id="view-form" class="view">
+    <div class="form-header">
+      <button class="form-back" onclick="navigate('dashboard')">←</button>
+      <h2 id="form-title">Nuova Giornata</h2>
+    </div>
+    <div class="form-body">
+      <div class="form-section">
+        <div class="form-section-title">Data</div>
+        <div class="field-row single">
+          <div class="field">
+            <label>Data</label>
+            <input type="date" id="entry-date">
+          </div>
+        </div>
+      </div>
+
+      <div class="calc-preview">
+        <div class="calc-item">
+          <div class="calc-item-label">Ore lavorate</div>
+          <div class="calc-item-value" id="calc-worked">0:00</div>
+        </div>
+        <div class="calc-item">
+          <div class="calc-item-label">Ticket</div>
+          <div class="calc-item-value" id="calc-ticket">0</div>
+        </div>
+        <div class="calc-item">
+          <div class="calc-item-label">Differenza</div>
+          <div class="calc-item-value" id="calc-diff">0:00</div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Presenza</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Entrata</label>
+            <input type="time" id="entry-checkin" oninput="updateCalcPreview()">
+          </div>
+          <div class="field">
+            <label>Uscita</label>
+            <input type="time" id="entry-checkout" oninput="updateCalcPreview()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Pausa (min)</label>
+            <input type="number" id="entry-break" min="0" max="120" step="5" oninput="updateCalcPreview()">
+          </div>
+          <div class="field">
+            <label>Ore contratto</label>
+            <input type="number" id="entry-contract" min="0" max="12" step="0.5" oninput="updateCalcPreview()">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Assenze</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Ore malattia</label>
+            <input type="number" id="entry-sick" min="0" max="24" step="0.5" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Ore ferie</label>
+            <input type="number" id="entry-holiday" min="0" max="24" step="0.5" placeholder="0">
+          </div>
+        </div>
+        <div class="field-row single">
+          <div class="field">
+            <label>Ore assenza recupero</label>
+            <input type="number" id="entry-recovery" min="0" max="24" step="0.5" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Ore Aggiuntive (autorizzate)</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Supplementari</label>
+            <input type="number" id="entry-supp" min="0" max="24" step="0.5" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Straord. diurne</label>
+            <input type="number" id="entry-otday" min="0" max="24" step="0.5" placeholder="0">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Straord. nott./fest.</label>
+            <input type="number" id="entry-otnight" min="0" max="24" step="0.5" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Accantonate</label>
+            <input type="number" id="entry-accrued" min="0" max="24" step="0.5" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Trasferta</div>
+        <label class="toggle-row" style="border-bottom:1px solid var(--border);">
+          <span>In trasferta</span>
+          <span class="toggle">
+            <input type="checkbox" id="entry-travel"
+              onchange="document.getElementById('travel-desc-row').style.display=this.checked?'block':'none'">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <div id="travel-desc-row" style="display:none;">
+          <div class="field">
+            <label>Descrizione trasferta</label>
+            <input type="text" id="entry-travel-desc" placeholder="Dove / perché">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Note</div>
+        <div class="field-row single">
+          <div class="field">
+            <label>Note libere</label>
+            <textarea id="entry-notes" placeholder="Note aggiuntive..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-save" onclick="saveEntry_form()">💾 Salva giornata</button>
+    </div>
+  </div>
+
+  <!-- ========== CALENDARIO ========== -->
+  <div id="view-calendar" class="view">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+      <span id="cal-label">—</span>
+      <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+    </div>
+    <div class="cal-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Lavoro</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Ferie</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Malattia</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Recupero</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Trasferta</div>
+    </div>
+    <div id="cal-grid"></div>
+  </div>
+
+  <!-- ========== STORICO ========== -->
+  <div id="view-history" class="view">
+    <div class="search-bar">
+      <input type="search" id="history-search" placeholder="🔍 Cerca per data o note..."
+        oninput="historySearch=this.value; renderHistory()">
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- ========== REPORT ========== -->
+  <div id="view-report" class="view">
+    <div class="view-header"><h2>📊 Report Mensile</h2></div>
+    <div class="report-controls">
+      <select id="report-month">
+        <option value="1">Gennaio</option><option value="2">Febbraio</option>
+        <option value="3">Marzo</option><option value="4">Aprile</option>
+        <option value="5">Maggio</option><option value="6">Giugno</option>
+        <option value="7">Luglio</option><option value="8">Agosto</option>
+        <option value="9">Settembre</option><option value="10">Ottobre</option>
+        <option value="11">Novembre</option><option value="12">Dicembre</option>
+      </select>
+      <select id="report-year">
+        <option value="2024">2024</option><option value="2025">2025</option>
+        <option value="2026">2026</option><option value="2027">2027</option>
+      </select>
+      <button class="btn-go" onclick="renderReport()">Vai</button>
+    </div>
+    <div id="report-title"></div>
+    <div id="report-grid"></div>
+    <div class="export-buttons">
+      <button class="btn-export btn-csv" onclick="doExportCSV()">📄 Esporta CSV</button>
+      <button class="btn-export btn-pdf" onclick="doExportPDF()">📑 Esporta PDF</button>
+    </div>
+    <div id="report-table-wrap" style="display:none;">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Gg</th><th>Data</th><th>Ticket</th><th>Contr.</th><th>Lav.</th>
+            <th>Mal.</th><th>Ferie</th><th>Rec.</th><th>Supp.</th>
+            <th>Str.D</th><th>Str.N</th><th>Acc.</th><th>Note</th>
+          </tr>
+        </thead>
+        <tbody id="report-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========== IMPOSTAZIONI ========== -->
+  <div id="view-settings" class="view">
+    <div class="settings-header"><h2>⚙️ Impostazioni</h2></div>
+    <div class="settings-body">
+      <div class="settings-section">
+        <div class="settings-section-title">Dati Personali</div>
+        <div class="settings-field">
+          <label>Nome e Cognome</label>
+          <input type="text" id="set-name" autocomplete="name">
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Parametri Lavorativi</div>
+        <div class="settings-field">
+          <label>Ore giornaliere Lun–Gio</label>
+          <input type="number" id="set-hours" min="1" max="12" step="0.5">
+        </div>
+        <div class="settings-field">
+          <label>Ore giornaliere Venerdì</label>
+          <input type="number" id="set-hours-fri" min="0" max="12" step="0.5">
+        </div>
+        <div class="settings-field">
+          <label>Pausa predefinita (minuti)</label>
+          <select id="set-break">
+            <option value="0">Nessuna</option>
+            <option value="30">30 minuti</option>
+            <option value="60">60 minuti</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Aspetto</div>
+        <div class="settings-field">
+          <label>Tema</label>
+          <select id="set-theme" onchange="applyTheme(this.value)">
+            <option value="grafite">Grafite Blu</option>
+            <option value="petrolio">Verde Petrolio</option>
+            <option value="bordeaux">Bordeaux</option>
+            <option value="viola">Viola</option>
+            <option value="grigio">Grigio Professionale</option>
+            <option value="chiaro">Chiaro</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">Sicurezza</div>
+        <label class="toggle-row" style="border-bottom:1px solid var(--border);">
+          <span>Abilita PIN</span>
+          <span class="toggle">
+            <input type="checkbox" id="set-pin-enabled"
+              onchange="document.getElementById('set-pin-row').style.display=this.checked?'flex':'none'">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <div class="settings-field" id="set-pin-row" style="display:none;">
+          <label>PIN (4 cifre)</label>
+          <input type="password" id="set-pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••">
+        </div>
+      </div>
+      <button class="btn-save" onclick="saveSettings()">💾 Salva impostazioni</button>
+
+      <div class="settings-section" style="margin-top:12px;">
+        <div class="settings-section-title">Backup dati</div>
+      </div>
+      <div class="backup-buttons">
+        <button class="btn-backup" onclick="exportBackup()">📤 Esporta backup</button>
+        <button class="btn-backup" onclick="document.getElementById('import-file').click()">📥 Importa backup</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none"
+        onchange="importBackup(this.files[0])
+          .then(()=>{ showToast('Backup ripristinato!','success'); this.value=''; })
+          .catch(e=>showToast('Errore: '+e.message,'error'))">
+
+      <div style="padding:16px; text-align:center; color:var(--subtext); font-size:12px;">
+        Presenze MUNAF v1.0 — Dati salvati localmente sul dispositivo
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== BOTTOM NAV ========== -->
+  <nav id="bottom-nav">
+    <button class="nav-btn" data-view="dashboard" onclick="navigate('dashboard')">
+      <span class="nav-icon">🏠</span>Home
+    </button>
+    <button class="nav-btn" data-view="calendar" onclick="navigate('calendar')">
+      <span class="nav-icon">📅</span>Calendario
+    </button>
+    <button class="nav-btn nav-add" data-view="form" onclick="openNewEntry()">
+      <span class="nav-icon">＋</span>
+    </button>
+    <button class="nav-btn" data-view="history" onclick="navigate('history')">
+      <span class="nav-icon">🗂️</span>Storico
+    </button>
+    <button class="nav-btn" data-view="settings" onclick="navigate('settings')">
+      <span class="nav-icon">⚙️</span>Setup
+    </button>
+  </nav>
+
+  <div id="toast"></div>
+</div>
+
+<script src="storage.js"></script>
+<script src="calculations.js"></script>
+<script src="export.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
