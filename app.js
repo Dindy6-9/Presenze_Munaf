@@ -4,7 +4,8 @@
 
 let appSettings = {
   employeeName: '',
-  defaultContractHours: 7,
+  defaultContractHours: 7.5,
+  contractHoursFriday: 7,
   defaultBreakMinutes: 30,
   theme: 'grafite',
   pinEnabled: false,
@@ -28,16 +29,18 @@ async function init() {
   if (Object.keys(saved).length > 0) {
     appSettings = { ...appSettings, ...saved };
   }
+  // Normalizza i booleani salvati come stringa
+  appSettings.pinEnabled = appSettings.pinEnabled === true || appSettings.pinEnabled === 'true';
+
   applyTheme(appSettings.theme);
 
-  // Prima configurazione?
   if (!appSettings.employeeName) {
     showView('setup');
     return;
   }
 
-  // PIN?
-  if (appSettings.pinEnabled && appSettings.pin) {
+  // PIN solo se abilitato E pin non vuoto
+  if (appSettings.pinEnabled === true && appSettings.pin && appSettings.pin.length === 4) {
     showPinLock();
     return;
   }
@@ -47,16 +50,28 @@ async function init() {
 }
 
 // =============================================
+// ORE CONTRATTO PER GIORNO
+// =============================================
+
+function getContractHoursForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay(); // 0=Dom, 5=Ven, 6=Sab
+  if (day === 5) return parseFloat(appSettings.contractHoursFriday) || 7;
+  if (day === 6 || day === 0) return 0;
+  return parseFloat(appSettings.defaultContractHours) || 7.5;
+}
+
+// =============================================
 // THEME
 // =============================================
 
 const THEMES = {
-  grafite: { primary: '#1e3a5f', accent: '#3b82f6', bg: '#0f172a', surface: '#1e293b', text: '#e2e8f0', subtext: '#94a3b8', border: '#334155', row1: '#1e293b', row2: '#263348' },
+  grafite:  { primary: '#1e3a5f', accent: '#3b82f6', bg: '#0f172a', surface: '#1e293b', text: '#e2e8f0', subtext: '#94a3b8', border: '#334155', row1: '#1e293b', row2: '#263348' },
   petrolio: { primary: '#0f4c3a', accent: '#10b981', bg: '#0a1a14', surface: '#0f2d22', text: '#d1fae5', subtext: '#6ee7b7', border: '#1a4a35', row1: '#0f2d22', row2: '#163d2e' },
   bordeaux: { primary: '#6b1e2e', accent: '#f43f5e', bg: '#1a0a10', surface: '#2d1218', text: '#fce7f3', subtext: '#f9a8d4', border: '#4a1525', row1: '#2d1218', row2: '#3d1a22' },
-  viola: { primary: '#3b1f6b', accent: '#a855f7', bg: '#0f0a1a', surface: '#1e1230', text: '#ede9fe', subtext: '#c4b5fd', border: '#3b2d6b', row1: '#1e1230', row2: '#271840' },
-  grigio: { primary: '#374151', accent: '#6b7280', bg: '#111827', surface: '#1f2937', text: '#f9fafb', subtext: '#9ca3af', border: '#374151', row1: '#1f2937', row2: '#273040' },
-  chiaro: { primary: '#1e40af', accent: '#3b82f6', bg: '#f8fafc', surface: '#ffffff', text: '#1e293b', subtext: '#64748b', border: '#e2e8f0', row1: '#f8fafc', row2: '#f1f5f9' }
+  viola:    { primary: '#3b1f6b', accent: '#a855f7', bg: '#0f0a1a', surface: '#1e1230', text: '#ede9fe', subtext: '#c4b5fd', border: '#3b2d6b', row1: '#1e1230', row2: '#271840' },
+  grigio:   { primary: '#374151', accent: '#6b7280', bg: '#111827', surface: '#1f2937', text: '#f9fafb', subtext: '#9ca3af', border: '#374151', row1: '#1f2937', row2: '#273040' },
+  chiaro:   { primary: '#1e40af', accent: '#3b82f6', bg: '#f8fafc', surface: '#ffffff', text: '#1e293b', subtext: '#64748b', border: '#e2e8f0', row1: '#f8fafc', row2: '#f1f5f9' }
 };
 
 function applyTheme(themeName) {
@@ -85,7 +100,6 @@ function showView(name) {
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.view === name);
   });
-  // Nasconde navbar in setup e pin
   const nav = document.getElementById('bottom-nav');
   if (nav) nav.style.display = ['setup', 'pin'].includes(name) ? 'none' : 'flex';
 }
@@ -97,7 +111,6 @@ function showView(name) {
 function showPinLock() {
   showView('pin');
   document.getElementById('pin-error').textContent = '';
-  document.getElementById('pin-display').textContent = '';
   window._pinInput = '';
   renderPinDisplay();
 }
@@ -110,18 +123,20 @@ function pinKey(val) {
   }
   renderPinDisplay();
   if ((window._pinInput || '').length === 4) {
-    setTimeout(checkPin, 100);
+    setTimeout(checkPin, 150);
   }
 }
 
 function renderPinDisplay() {
   const len = (window._pinInput || '').length;
-  const dots = Array.from({ length: 4 }, (_, i) => `<span class="pin-dot ${i < len ? 'filled' : ''}"></span>`).join('');
+  const dots = Array.from({ length: 4 }, (_, i) =>
+    `<span class="pin-dot ${i < len ? 'filled' : ''}"></span>`
+  ).join('');
   document.getElementById('pin-display').innerHTML = dots;
 }
 
 function checkPin() {
-  if (window._pinInput === appSettings.pin) {
+  if (window._pinInput === String(appSettings.pin)) {
     showView('dashboard');
     refreshDashboard();
   } else {
@@ -138,12 +153,21 @@ function checkPin() {
 async function saveSetup() {
   const name = document.getElementById('setup-name').value.trim();
   if (!name) { showToast('Inserisci il tuo nome', 'error'); return; }
+
+  const pinAbilitato = document.getElementById('setup-pin-enabled').checked;
+  const pinValore = document.getElementById('setup-pin').value.trim();
+
+  if (pinAbilitato && pinValore.length !== 4) {
+    showToast('Il PIN deve essere di 4 cifre', 'error'); return;
+  }
+
   appSettings.employeeName = name;
-  appSettings.defaultContractHours = parseFloat(document.getElementById('setup-hours').value) || 7;
+  appSettings.defaultContractHours = parseFloat(document.getElementById('setup-hours').value) || 7.5;
+  appSettings.contractHoursFriday = parseFloat(document.getElementById('setup-hours-fri').value) || 7;
   appSettings.defaultBreakMinutes = parseInt(document.getElementById('setup-break').value) || 30;
   appSettings.theme = document.getElementById('setup-theme').value;
-  appSettings.pinEnabled = document.getElementById('setup-pin-enabled').checked;
-  appSettings.pin = document.getElementById('setup-pin').value;
+  appSettings.pinEnabled = pinAbilitato;
+  appSettings.pin = pinAbilitato ? pinValore : '';
 
   for (const [k, v] of Object.entries(appSettings)) {
     await saveSetting(k, v);
@@ -174,7 +198,6 @@ async function refreshDashboard() {
   balEl.textContent = `${bal > 0 ? '+' : ''}${formatHours(bal)}`;
   balEl.className = 'stat-value ' + (bal > 0 ? 'positive' : bal < 0 ? 'negative' : '');
 
-  // Ultima registrazione
   const today = todayStr();
   const todayEntry = await getEntryByDate(today);
   const lastEl = document.getElementById('dash-last');
@@ -196,10 +219,16 @@ async function openNewEntry(date) {
   document.getElementById('form-title').textContent = 'Nuova Giornata';
   resetForm();
   document.getElementById('entry-date').value = d;
-  document.getElementById('entry-contract').value = appSettings.defaultContractHours;
+  document.getElementById('entry-contract').value = getContractHoursForDate(d);
   document.getElementById('entry-break').value = appSettings.defaultBreakMinutes;
 
-  // Controlla se esiste già
+  document.getElementById('entry-date').onchange = function() {
+    if (!editingEntryId) {
+      document.getElementById('entry-contract').value = getContractHoursForDate(this.value);
+      updateCalcPreview();
+    }
+  };
+
   const existing = await getEntryByDate(d);
   if (existing) {
     editingEntryId = existing.id;
@@ -210,9 +239,9 @@ async function openNewEntry(date) {
 }
 
 function resetForm() {
-  ['entry-date', 'entry-checkin', 'entry-checkout', 'entry-sick', 'entry-holiday',
-    'entry-recovery', 'entry-supp', 'entry-otday', 'entry-otnight', 'entry-accrued',
-    'entry-travel-desc', 'entry-notes'].forEach(id => {
+  ['entry-date','entry-checkin','entry-checkout','entry-sick','entry-holiday',
+   'entry-recovery','entry-supp','entry-otday','entry-otnight','entry-accrued',
+   'entry-travel-desc','entry-notes'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -266,15 +295,13 @@ async function saveEntry_form() {
   const checkIn = document.getElementById('entry-checkin').value;
   const checkOut = document.getElementById('entry-checkout').value;
   const breakMinutes = parseInt(document.getElementById('entry-break').value) || appSettings.defaultBreakMinutes;
-  const contractHours = parseFloat(document.getElementById('entry-contract').value) || appSettings.defaultContractHours;
-
+  const contractHours = parseFloat(document.getElementById('entry-contract').value) || getContractHoursForDate(date);
   const workedHours = calcWorkedHours(checkIn, checkOut, breakMinutes);
   const ticket = calcTicket(workedHours);
 
   const entry = {
     id: editingEntryId || undefined,
-    date,
-    checkIn, checkOut, breakMinutes, contractHours,
+    date, checkIn, checkOut, breakMinutes, contractHours,
     workedHours, ticket,
     difference: calcDifference(workedHours, contractHours),
     sickHours: parseFloat(document.getElementById('entry-sick').value) || 0,
@@ -314,19 +341,19 @@ async function renderCalendar() {
   const today = todayStr();
 
   let html = '';
-  const dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-  dayNames.forEach(d => { html += `<div class="cal-header-cell">${d}</div>`; });
+  ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'].forEach(d => {
+    html += `<div class="cal-header-cell">${d}</div>`;
+  });
 
-  // celle vuote
   for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell empty"></div>`;
 
   for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const entry = byDate[dateStr];
     const type = getEntryType(entry);
     const isToday = dateStr === today;
-    const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const dow = new Date(dateStr + 'T00:00:00').getDay();
+    const isWeekend = dow === 0 || dow === 6;
 
     let cls = 'cal-cell';
     if (type) cls += ` cal-${type}`;
@@ -336,8 +363,7 @@ async function renderCalendar() {
     const ticket = entry && entry.ticket ? '<span class="cal-ticket">T</span>' : '';
     const travel = entry && entry.travel ? '<span class="cal-travel-icon">✈</span>' : '';
     html += `<div class="${cls}" onclick="openNewEntry('${dateStr}')">
-      <span class="cal-day-num">${d}</span>
-      ${ticket}${travel}
+      <span class="cal-day-num">${d}</span>${ticket}${travel}
       ${entry ? `<span class="cal-hours">${formatHours(entry.workedHours)}</span>` : ''}
     </div>`;
   }
@@ -348,7 +374,7 @@ async function renderCalendar() {
 function calNav(dir) {
   calendarMonth += dir;
   if (calendarMonth > 12) { calendarMonth = 1; calendarYear++; }
-  if (calendarMonth < 1) { calendarMonth = 12; calendarYear--; }
+  if (calendarMonth < 1)  { calendarMonth = 12; calendarYear--; }
   renderCalendar();
 }
 
@@ -359,7 +385,6 @@ function calNav(dir) {
 async function renderHistory() {
   historyEntries = await getAllEntries();
   const processed = historyEntries.map(processEntry).reverse();
-
   const search = historySearch.toLowerCase();
   const filtered = search
     ? processed.filter(e =>
@@ -377,7 +402,7 @@ async function renderHistory() {
 
   const html = filtered.map(e => {
     const type = getEntryType(e);
-    const typeLabel = { lavoro: 'Lavoro', ferie: 'Ferie', malattia: 'Malattia', recupero: 'Recupero', trasferta: 'Trasferta' }[type] || '—';
+    const typeLabel = { lavoro:'Lavoro', ferie:'Ferie', malattia:'Malattia', recupero:'Recupero', trasferta:'Trasferta' }[type] || '—';
     return `<div class="history-item">
       <div class="history-left">
         <span class="history-day">${getDayName(e.date)}</span>
@@ -414,9 +439,8 @@ async function confirmDelete(id) {
 // =============================================
 
 async function renderReport() {
-  const year = parseInt(document.getElementById('report-year').value) || currentYear();
+  const year  = parseInt(document.getElementById('report-year').value)  || currentYear();
   const month = parseInt(document.getElementById('report-month').value) || currentMonth();
-
   const entries = await getEntriesByMonth(year, month);
   const processed = entries.map(processEntry);
   const totals = calcMonthlyTotals(processed);
@@ -424,45 +448,37 @@ async function renderReport() {
   document.getElementById('report-title').textContent = `${MONTHS_IT[month - 1]} ${year}`;
 
   const fields = [
-    ['Ore Contratto', formatHours(totals.contractHours)],
-    ['Ore Lavorate', formatHours(totals.workedHours)],
-    ['Saldo Ore', `${totals.balanceHours > 0 ? '+' : ''}${formatHours(totals.balanceHours)}`],
-    ['Ticket', totals.tickets],
-    ['Malattia', formatHours(totals.sickHours)],
-    ['Ferie', formatHours(totals.holidayHours)],
-    ['Assenza Recupero', formatHours(totals.recoveryHours)],
+    ['Ore Contratto',     formatHours(totals.contractHours)],
+    ['Ore Lavorate',      formatHours(totals.workedHours)],
+    ['Saldo Ore',        `${totals.balanceHours > 0 ? '+' : ''}${formatHours(totals.balanceHours)}`],
+    ['Ticket',            totals.tickets],
+    ['Malattia',          formatHours(totals.sickHours)],
+    ['Ferie',             formatHours(totals.holidayHours)],
+    ['Assenza Recupero',  formatHours(totals.recoveryHours)],
     ['Ore Supplementari', formatHours(totals.supplementaryHours)],
-    ['Straordinari Diurni', formatHours(totals.overtimeDayHours)],
+    ['Straordinari Diurni',   formatHours(totals.overtimeDayHours)],
     ['Straordinari Notturni', formatHours(totals.overtimeNightHours)],
-    ['Ore Accantonate', formatHours(totals.accruedHours)],
-    ['Giorni Trasferta', totals.travelDays],
+    ['Ore Accantonate',   formatHours(totals.accruedHours)],
+    ['Giorni Trasferta',  totals.travelDays],
   ];
 
   document.getElementById('report-grid').innerHTML = fields.map(([label, val]) =>
     `<div class="report-card"><div class="report-label">${label}</div><div class="report-val">${val}</div></div>`
   ).join('');
 
-  // Tabella riassuntiva
   if (processed.length > 0) {
-    let rows = processed.map(e => {
+    document.getElementById('report-table-body').innerHTML = processed.map(e => {
       const type = getEntryType(e);
       return `<tr class="row-${type || 'empty'}">
-        <td>${getDayName(e.date)}</td>
-        <td>${formatDateIT(e.date)}</td>
-        <td>${e.ticket || 0}</td>
-        <td>${e.contractHours || 0}</td>
-        <td>${formatHours(e.workedHours)}</td>
-        <td>${e.sickHours || 0}</td>
-        <td>${e.holidayHours || 0}</td>
-        <td>${e.recoveryAbsenceHours || 0}</td>
-        <td>${e.supplementaryHours || 0}</td>
-        <td>${e.overtimeDayHours || 0}</td>
-        <td>${e.overtimeNightHours || 0}</td>
-        <td>${e.accruedHours || 0}</td>
+        <td>${getDayName(e.date)}</td><td>${formatDateIT(e.date)}</td>
+        <td>${e.ticket || 0}</td><td>${e.contractHours || 0}</td>
+        <td>${formatHours(e.workedHours)}</td><td>${e.sickHours || 0}</td>
+        <td>${e.holidayHours || 0}</td><td>${e.recoveryAbsenceHours || 0}</td>
+        <td>${e.supplementaryHours || 0}</td><td>${e.overtimeDayHours || 0}</td>
+        <td>${e.overtimeNightHours || 0}</td><td>${e.accruedHours || 0}</td>
         <td>${e.notes || ''}</td>
       </tr>`;
     }).join('');
-    document.getElementById('report-table-body').innerHTML = rows;
     document.getElementById('report-table-wrap').style.display = 'block';
   } else {
     document.getElementById('report-table-wrap').style.display = 'none';
@@ -470,19 +486,17 @@ async function renderReport() {
 }
 
 async function doExportCSV() {
-  const year = parseInt(document.getElementById('report-year').value) || currentYear();
+  const year  = parseInt(document.getElementById('report-year').value)  || currentYear();
   const month = parseInt(document.getElementById('report-month').value) || currentMonth();
-  const entries = await getEntriesByMonth(year, month);
-  const processed = entries.map(processEntry);
+  const processed = (await getEntriesByMonth(year, month)).map(processEntry);
   exportCSV(processed, year, month, appSettings.employeeName);
   showToast('CSV esportato!', 'success');
 }
 
 async function doExportPDF() {
-  const year = parseInt(document.getElementById('report-year').value) || currentYear();
+  const year  = parseInt(document.getElementById('report-year').value)  || currentYear();
   const month = parseInt(document.getElementById('report-month').value) || currentMonth();
-  const entries = await getEntriesByMonth(year, month);
-  const processed = entries.map(processEntry);
+  const processed = (await getEntriesByMonth(year, month)).map(processEntry);
   showToast('Generazione PDF in corso...', 'info');
   try {
     await exportPDF(processed, year, month, appSettings.employeeName);
@@ -498,21 +512,31 @@ async function doExportPDF() {
 // =============================================
 
 async function loadSettings() {
-  document.getElementById('set-name').value = appSettings.employeeName || '';
-  document.getElementById('set-hours').value = appSettings.defaultContractHours || 7;
-  document.getElementById('set-break').value = appSettings.defaultBreakMinutes || 30;
-  document.getElementById('set-theme').value = appSettings.theme || 'grafite';
+  document.getElementById('set-name').value         = appSettings.employeeName || '';
+  document.getElementById('set-hours').value        = appSettings.defaultContractHours || 7.5;
+  document.getElementById('set-hours-fri').value    = appSettings.contractHoursFriday || 7;
+  document.getElementById('set-break').value        = appSettings.defaultBreakMinutes || 30;
+  document.getElementById('set-theme').value        = appSettings.theme || 'grafite';
   document.getElementById('set-pin-enabled').checked = !!appSettings.pinEnabled;
-  document.getElementById('set-pin').value = appSettings.pin || '';
+  document.getElementById('set-pin').value          = appSettings.pin || '';
+  document.getElementById('set-pin-row').style.display = appSettings.pinEnabled ? 'flex' : 'none';
 }
 
 async function saveSettings() {
-  appSettings.employeeName = document.getElementById('set-name').value.trim();
-  appSettings.defaultContractHours = parseFloat(document.getElementById('set-hours').value) || 7;
-  appSettings.defaultBreakMinutes = parseInt(document.getElementById('set-break').value) || 30;
-  appSettings.theme = document.getElementById('set-theme').value;
-  appSettings.pinEnabled = document.getElementById('set-pin-enabled').checked;
-  appSettings.pin = document.getElementById('set-pin').value;
+  const pinAbilitato = document.getElementById('set-pin-enabled').checked;
+  const pinValore    = document.getElementById('set-pin').value.trim();
+
+  if (pinAbilitato && pinValore.length !== 4) {
+    showToast('Il PIN deve essere di 4 cifre', 'error'); return;
+  }
+
+  appSettings.employeeName         = document.getElementById('set-name').value.trim();
+  appSettings.defaultContractHours = parseFloat(document.getElementById('set-hours').value) || 7.5;
+  appSettings.contractHoursFriday  = parseFloat(document.getElementById('set-hours-fri').value) || 7;
+  appSettings.defaultBreakMinutes  = parseInt(document.getElementById('set-break').value) || 30;
+  appSettings.theme                = document.getElementById('set-theme').value;
+  appSettings.pinEnabled           = pinAbilitato;
+  appSettings.pin                  = pinAbilitato ? pinValore : '';
 
   for (const [k, v] of Object.entries(appSettings)) {
     await saveSetting(k, v);
@@ -528,14 +552,14 @@ async function saveSettings() {
 async function navigate(view) {
   showView(view);
   if (view === 'dashboard') await refreshDashboard();
-  if (view === 'calendar') await renderCalendar();
-  if (view === 'history') { historySearch = ''; document.getElementById('history-search').value = ''; await renderHistory(); }
-  if (view === 'report') {
-    document.getElementById('report-year').value = currentYear();
+  if (view === 'calendar')  await renderCalendar();
+  if (view === 'history')   { historySearch = ''; document.getElementById('history-search').value = ''; await renderHistory(); }
+  if (view === 'report')    {
+    document.getElementById('report-year').value  = currentYear();
     document.getElementById('report-month').value = currentMonth();
     await renderReport();
   }
-  if (view === 'settings') await loadSettings();
+  if (view === 'settings')  await loadSettings();
 }
 
 // =============================================
@@ -556,7 +580,6 @@ function showToast(msg, type = 'info') {
 
 document.addEventListener('DOMContentLoaded', init);
 
-// Service Worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

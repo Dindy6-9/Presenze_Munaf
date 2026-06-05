@@ -37,8 +37,12 @@
       <div class="setup-section">
         <div class="setup-section-title">Parametri Lavorativi</div>
         <div class="setup-field">
-          <label>Ore giornaliere da contratto</label>
-          <input type="number" id="setup-hours" value="7" min="1" max="12" step="0.5">
+          <label>Ore giornaliere Lun–Gio</label>
+          <input type="number" id="setup-hours" value="7.5" min="1" max="12" step="0.5">
+        </div>
+        <div class="setup-field">
+          <label>Ore giornaliere Venerdì</label>
+          <input type="number" id="setup-hours-fri" value="7" min="0" max="12" step="0.5">
         </div>
         <div class="setup-field">
           <label>Pausa predefinita (minuti)</label>
@@ -68,7 +72,8 @@
         <label class="toggle-row">
           <span>Abilita PIN</span>
           <span class="toggle">
-            <input type="checkbox" id="setup-pin-enabled" onchange="document.getElementById('setup-pin-row').style.display=this.checked?'flex':'none'">
+            <input type="checkbox" id="setup-pin-enabled"
+              onchange="document.getElementById('setup-pin-row').style.display=this.checked?'flex':'none'">
             <span class="toggle-slider"></span>
           </span>
         </label>
@@ -134,20 +139,16 @@
     </div>
     <div class="quick-actions">
       <button class="quick-btn" onclick="openNewEntry()">
-        <span class="quick-btn-icon">➕</span>
-        Nuova giornata
+        <span class="quick-btn-icon">➕</span>Nuova giornata
       </button>
       <button class="quick-btn" onclick="navigate('calendar')">
-        <span class="quick-btn-icon">📅</span>
-        Calendario
+        <span class="quick-btn-icon">📅</span>Calendario
       </button>
       <button class="quick-btn" onclick="navigate('history')">
-        <span class="quick-btn-icon">🗂️</span>
-        Storico
+        <span class="quick-btn-icon">🗂️</span>Storico
       </button>
       <button class="quick-btn" onclick="navigate('report')">
-        <span class="quick-btn-icon">📊</span>
-        Report
+        <span class="quick-btn-icon">📊</span>Report
       </button>
     </div>
   </div>
@@ -159,8 +160,6 @@
       <h2 id="form-title">Nuova Giornata</h2>
     </div>
     <div class="form-body">
-
-      <!-- Data -->
       <div class="form-section">
         <div class="form-section-title">Data</div>
         <div class="field-row single">
@@ -171,7 +170,6 @@
         </div>
       </div>
 
-      <!-- Anteprima calcoli -->
       <div class="calc-preview">
         <div class="calc-item">
           <div class="calc-item-label">Ore lavorate</div>
@@ -187,7 +185,6 @@
         </div>
       </div>
 
-      <!-- Presenza -->
       <div class="form-section">
         <div class="form-section-title">Presenza</div>
         <div class="field-row">
@@ -212,7 +209,6 @@
         </div>
       </div>
 
-      <!-- Assenze -->
       <div class="form-section">
         <div class="form-section-title">Assenze</div>
         <div class="field-row">
@@ -233,7 +229,6 @@
         </div>
       </div>
 
-      <!-- Ore aggiuntive -->
       <div class="form-section">
         <div class="form-section-title">Ore Aggiuntive (autorizzate)</div>
         <div class="field-row">
@@ -258,13 +253,13 @@
         </div>
       </div>
 
-      <!-- Trasferta -->
       <div class="form-section">
         <div class="form-section-title">Trasferta</div>
-        <label class="toggle-row" style="border-bottom: 1px solid var(--border);">
+        <label class="toggle-row" style="border-bottom:1px solid var(--border);">
           <span>In trasferta</span>
           <span class="toggle">
-            <input type="checkbox" id="entry-travel" onchange="document.getElementById('travel-desc-row').style.display=this.checked?'block':'none'">
+            <input type="checkbox" id="entry-travel"
+              onchange="document.getElementById('travel-desc-row').style.display=this.checked?'block':'none'">
             <span class="toggle-slider"></span>
           </span>
         </label>
@@ -276,7 +271,6 @@
         </div>
       </div>
 
-      <!-- Note -->
       <div class="form-section">
         <div class="form-section-title">Note</div>
         <div class="field-row single">
@@ -319,29 +313,19 @@
 
   <!-- ========== REPORT ========== -->
   <div id="view-report" class="view">
-    <div class="view-header">
-      <h2>📊 Report Mensile</h2>
-    </div>
+    <div class="view-header"><h2>📊 Report Mensile</h2></div>
     <div class="report-controls">
       <select id="report-month">
-        <option value="1">Gennaio</option>
-        <option value="2">Febbraio</option>
-        <option value="3">Marzo</option>
-        <option value="4">Aprile</option>
-        <option value="5">Maggio</option>
-        <option value="6">Giugno</option>
-        <option value="7">Luglio</option>
-        <option value="8">Agosto</option>
-        <option value="9">Settembre</option>
-        <option value="10">Ottobre</option>
-        <option value="11">Novembre</option>
-        <option value="12">Dicembre</option>
+        <option value="1">Gennaio</option><option value="2">Febbraio</option>
+        <option value="3">Marzo</option><option value="4">Aprile</option>
+        <option value="5">Maggio</option><option value="6">Giugno</option>
+        <option value="7">Luglio</option><option value="8">Agosto</option>
+        <option value="9">Settembre</option><option value="10">Ottobre</option>
+        <option value="11">Novembre</option><option value="12">Dicembre</option>
       </select>
       <select id="report-year">
-        <option value="2024">2024</option>
-        <option value="2025">2025</option>
-        <option value="2026">2026</option>
-        <option value="2027">2027</option>
+        <option value="2024">2024</option><option value="2025">2025</option>
+        <option value="2026">2026</option><option value="2027">2027</option>
       </select>
       <button class="btn-go" onclick="renderReport()">Vai</button>
     </div>
@@ -367,9 +351,7 @@
 
   <!-- ========== IMPOSTAZIONI ========== -->
   <div id="view-settings" class="view">
-    <div class="settings-header">
-      <h2>⚙️ Impostazioni</h2>
-    </div>
+    <div class="settings-header"><h2>⚙️ Impostazioni</h2></div>
     <div class="settings-body">
       <div class="settings-section">
         <div class="settings-section-title">Dati Personali</div>
@@ -381,8 +363,12 @@
       <div class="settings-section">
         <div class="settings-section-title">Parametri Lavorativi</div>
         <div class="settings-field">
-          <label>Ore giornaliere da contratto</label>
+          <label>Ore giornaliere Lun–Gio</label>
           <input type="number" id="set-hours" min="1" max="12" step="0.5">
+        </div>
+        <div class="settings-field">
+          <label>Ore giornaliere Venerdì</label>
+          <input type="number" id="set-hours-fri" min="0" max="12" step="0.5">
         </div>
         <div class="settings-field">
           <label>Pausa predefinita (minuti)</label>
@@ -409,10 +395,11 @@
       </div>
       <div class="settings-section">
         <div class="settings-section-title">Sicurezza</div>
-        <label class="toggle-row" style="border-bottom: 1px solid var(--border);">
+        <label class="toggle-row" style="border-bottom:1px solid var(--border);">
           <span>Abilita PIN</span>
           <span class="toggle">
-            <input type="checkbox" id="set-pin-enabled" onchange="document.getElementById('set-pin-row').style.display=this.checked?'flex':'none'">
+            <input type="checkbox" id="set-pin-enabled"
+              onchange="document.getElementById('set-pin-row').style.display=this.checked?'flex':'none'">
             <span class="toggle-slider"></span>
           </span>
         </label>
@@ -423,20 +410,20 @@
       </div>
       <button class="btn-save" onclick="saveSettings()">💾 Salva impostazioni</button>
 
-      <div class="settings-section">
+      <div class="settings-section" style="margin-top:12px;">
         <div class="settings-section-title">Backup dati</div>
       </div>
       <div class="backup-buttons">
         <button class="btn-backup" onclick="exportBackup()">📤 Esporta backup</button>
-        <button class="btn-backup" onclick="document.getElementById('import-file').click()">
-          📥 Importa backup
-        </button>
+        <button class="btn-backup" onclick="document.getElementById('import-file').click()">📥 Importa backup</button>
       </div>
       <input type="file" id="import-file" accept=".json" style="display:none"
-        onchange="importBackup(this.files[0]).then(()=>{ showToast('Backup ripristinato!','success'); this.value=''; }).catch(e=>showToast('Errore: '+e.message,'error'))">
+        onchange="importBackup(this.files[0])
+          .then(()=>{ showToast('Backup ripristinato!','success'); this.value=''; })
+          .catch(e=>showToast('Errore: '+e.message,'error'))">
 
-      <div style="padding: 16px; text-align:center; color: var(--subtext); font-size: 12px;">
-        Presenze MUNAF v1.0 — Tutti i dati sono salvati localmente sul dispositivo
+      <div style="padding:16px; text-align:center; color:var(--subtext); font-size:12px;">
+        Presenze MUNAF v1.0 — Dati salvati localmente sul dispositivo
       </div>
     </div>
   </div>
@@ -444,29 +431,23 @@
   <!-- ========== BOTTOM NAV ========== -->
   <nav id="bottom-nav">
     <button class="nav-btn" data-view="dashboard" onclick="navigate('dashboard')">
-      <span class="nav-icon">🏠</span>
-      Home
+      <span class="nav-icon">🏠</span>Home
     </button>
     <button class="nav-btn" data-view="calendar" onclick="navigate('calendar')">
-      <span class="nav-icon">📅</span>
-      Calendario
+      <span class="nav-icon">📅</span>Calendario
     </button>
     <button class="nav-btn nav-add" data-view="form" onclick="openNewEntry()">
       <span class="nav-icon">＋</span>
     </button>
     <button class="nav-btn" data-view="history" onclick="navigate('history')">
-      <span class="nav-icon">🗂️</span>
-      Storico
+      <span class="nav-icon">🗂️</span>Storico
     </button>
     <button class="nav-btn" data-view="settings" onclick="navigate('settings')">
-      <span class="nav-icon">⚙️</span>
-      Setup
+      <span class="nav-icon">⚙️</span>Setup
     </button>
   </nav>
 
-  <!-- TOAST -->
   <div id="toast"></div>
-
 </div>
 
 <script src="js/storage.js"></script>
