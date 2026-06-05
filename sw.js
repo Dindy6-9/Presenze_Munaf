@@ -1,8 +1,4 @@
-// =============================================
-// SW.JS - Service Worker v4
-// =============================================
-
-const CACHE_NAME = 'presenze-munaf-v4';
+const CACHE_NAME = 'presenze-munaf-v6';
 const ASSETS = [
   './',
   './index.html',
