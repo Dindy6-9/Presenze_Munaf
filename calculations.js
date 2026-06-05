@@ -13,12 +13,17 @@ function minutesToHours(minutes) {
 }
 
 function formatHours(h) {
-  if (h === 0) return '0:00';
+  if (h === 0 || h === '0') return '0:00';
   const sign = h < 0 ? '-' : '';
   const abs = Math.abs(h);
   const hours = Math.floor(abs);
   const mins = Math.round((abs - hours) * 60);
   return `${sign}${hours}:${String(mins).padStart(2, '0')}`;
+}
+
+function formatHoursDecimal(h) {
+  if (!h || h === 0) return '0';
+  return String(h).replace('.', ',');
 }
 
 function calcWorkedHours(checkIn, checkOut, breakMinutes) {
@@ -62,28 +67,46 @@ function calcMonthlyTotals(entries) {
   };
 
   for (const e of entries) {
-    totals.contractHours += e.contractHours || 0;
-    totals.workedHours += e.workedHours || 0;
-    totals.sickHours += e.sickHours || 0;
-    totals.holidayHours += e.holidayHours || 0;
-    totals.recoveryHours += e.recoveryAbsenceHours || 0;
+    totals.contractHours      += e.contractHours || 0;
+    totals.workedHours        += e.workedHours || 0;
+    totals.sickHours          += e.sickHours || 0;
+    totals.holidayHours       += e.holidayHours || 0;
+    totals.recoveryHours      += e.recoveryAbsenceHours || 0;
     totals.supplementaryHours += e.supplementaryHours || 0;
-    totals.overtimeDayHours += e.overtimeDayHours || 0;
+    totals.overtimeDayHours   += e.overtimeDayHours || 0;
     totals.overtimeNightHours += e.overtimeNightHours || 0;
-    totals.accruedHours += e.accruedHours || 0;
-    totals.tickets += e.ticket || 0;
+    totals.accruedHours       += e.accruedHours || 0;
+    totals.tickets            += e.ticket || 0;
     if (e.travel) totals.travelDays++;
   }
 
-  totals.balanceHours = Math.round((totals.workedHours - totals.contractHours) * 100) / 100;
+  // Saldo calcolato SOLO dai campi manuali (algebrico)
+  totals.balanceHours = Math.round((
+    totals.supplementaryHours +
+    totals.overtimeDayHours +
+    totals.overtimeNightHours +
+    totals.accruedHours -
+    totals.sickHours -
+    totals.holidayHours -
+    totals.recoveryHours
+  ) * 100) / 100;
 
   return totals;
 }
 
-const DAYS_IT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+// Saldo giornaliero dai campi manuali
+function calcDailyBalance(entry) {
+  const plus = (entry.supplementaryHours || 0) + (entry.overtimeDayHours || 0) +
+               (entry.overtimeNightHours || 0) + (entry.accruedHours || 0);
+  const minus = (entry.sickHours || 0) + (entry.holidayHours || 0) +
+                (entry.recoveryAbsenceHours || 0);
+  return Math.round((plus - minus) * 100) / 100;
+}
+
+const DAYS_IT = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const MONTHS_IT = [
-  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+  'Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+  'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'
 ];
 
 function getDayName(dateStr) {
@@ -103,15 +126,15 @@ function getDaysInMonth(year, month) {
 function getFirstDayOfMonth(year, month) {
   const d = new Date(year, month - 1, 1);
   let day = d.getDay();
-  return day === 0 ? 6 : day - 1; // lunedì = 0
+  return day === 0 ? 6 : day - 1;
 }
 
 function todayStr() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function currentYear() { return new Date().getFullYear(); }
+function currentYear()  { return new Date().getFullYear(); }
 function currentMonth() { return new Date().getMonth() + 1; }
 
 function getEntryType(entry) {

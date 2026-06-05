@@ -350,6 +350,7 @@ async function renderHistory() {
       <div class="history-center">
         <span>${e.checkIn || '—'} → ${e.checkOut || '—'}</span>
         <span class="history-hours">${formatHours(e.workedHours)} ore</span>
+        ${(() => { const bal = calcDailyBalance(e); return bal !== 0 ? `<span class="badge ${bal > 0 ? 'badge-ok' : 'badge-warn'}">${bal > 0 ? '+' : ''}${formatHours(bal)}</span>` : ''; })()}
         ${e.ticket ? '<span class="badge badge-ok">🎫 Ticket</span>' : ''}
         ${e.travel ? '<span class="badge badge-trasferta">✈ Trasferta</span>' : ''}
         ${e.notes ? `<span class="history-note">${e.notes}</span>` : ''}
