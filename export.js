@@ -7,7 +7,6 @@ function fmtNum(n) {
   return String(n).replace('.', ',');
 }
 
-// ---- CSV ----
 function exportCSV(entries, year, month, employeeName) {
   const header = [
     'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate',
@@ -42,20 +41,12 @@ function exportCSV(entries, year, month, employeeName) {
   const totBal = totals.balanceHours;
   const totBalStr = totBal === 0 ? '0' : (totBal > 0 ? '+' : '') + fmtNum(totBal);
   const totRow = [
-    'TOTALE','',
-    totals.tickets,
-    fmtNum(totals.contractHours),
-    fmtNum(totals.workedHours),
-    fmtNum(totals.sickHours),
-    fmtNum(totals.holidayHours),
-    fmtNum(totals.recoveryHours),
-    fmtNum(totals.supplementaryHours),
-    fmtNum(totals.overtimeDayHours),
-    fmtNum(totals.overtimeNightHours),
-    fmtNum(totals.accruedHours),
-    totBalStr,
-    totals.travelDays || '',
-    ''
+    'TOTALE','',totals.tickets,
+    fmtNum(totals.contractHours),fmtNum(totals.workedHours),
+    fmtNum(totals.sickHours),fmtNum(totals.holidayHours),
+    fmtNum(totals.recoveryHours),fmtNum(totals.supplementaryHours),
+    fmtNum(totals.overtimeDayHours),fmtNum(totals.overtimeNightHours),
+    fmtNum(totals.accruedHours),totBalStr,totals.travelDays || '',''
   ].join(';');
 
   const csv = '\uFEFF' + [header, ...rows, totRow].join('\r\n');
@@ -68,7 +59,6 @@ function exportCSV(entries, year, month, employeeName) {
   URL.revokeObjectURL(url);
 }
 
-// ---- PDF ----
 async function exportPDF(entries, year, month, employeeName) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     await new Promise((resolve, reject) => {
@@ -81,12 +71,8 @@ async function exportPDF(entries, year, month, employeeName) {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  const PAGE_W = 297;
-  const PAGE_H = 210;
-  const ML = 8;
-  const COL_W = PAGE_W - ML * 2;
+  const PAGE_W = 297, PAGE_H = 210, ML = 8, COL_W = PAGE_W - ML * 2;
 
-  // Intestazione
   doc.setFillColor(30, 58, 95);
   doc.rect(0, 0, PAGE_W, 22, 'F');
   doc.setTextColor(255, 255, 255);
@@ -98,38 +84,26 @@ async function exportPDF(entries, year, month, employeeName) {
   doc.text(`Dipendente: ${employeeName}    Mese: ${MONTHS_IT[month-1]} ${year}`, PAGE_W / 2, 17, { align: 'center' });
 
   const cols = [
-    { label: 'Giorno',    w: 12 },
-    { label: 'Data',      w: 18 },
-    { label: 'Ticket',    w: 12 },
-    { label: 'Contr.',    w: 12 },
-    { label: 'Lavorate',  w: 14 },
-    { label: 'Malattia',  w: 14 },
-    { label: 'Ferie',     w: 12 },
-    { label: 'Recupero',  w: 14 },
-    { label: 'Suppl.',    w: 12 },
-    { label: 'Str.Diurno',w: 16 },
-    { label: 'Str.Nott.', w: 14 },
-    { label: 'Accant.',   w: 13 },
-    { label: 'Saldo',     w: 13 },
-    { label: 'Note',      w: 36 },
-    { label: 'Firma',     w: 34 }
+    { label: 'Giorno', w: 12 }, { label: 'Data', w: 18 },
+    { label: 'Ticket', w: 12 }, { label: 'Contr.', w: 12 },
+    { label: 'Lavorate', w: 14 }, { label: 'Malattia', w: 14 },
+    { label: 'Ferie', w: 12 }, { label: 'Recupero', w: 14 },
+    { label: 'Suppl.', w: 12 }, { label: 'Str.Diurno', w: 16 },
+    { label: 'Str.Nott.', w: 14 }, { label: 'Accant.', w: 13 },
+    { label: 'Saldo', w: 13 }, { label: 'Note', w: 36 },
+    { label: 'Firma', w: 34 }
   ];
 
   let y = 28;
-  const ROW_H = 7;
-  const HEADER_H = 8;
+  const ROW_H = 7, HEADER_H = 8;
 
-  // Header colonne
   doc.setFillColor(30, 58, 95);
   doc.rect(ML, y, COL_W, HEADER_H, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'bold');
   let x = ML;
-  cols.forEach(c => {
-    doc.text(c.label, x + c.w / 2, y + 5.5, { align: 'center' });
-    x += c.w;
-  });
+  cols.forEach(c => { doc.text(c.label, x + c.w / 2, y + 5.5, { align: 'center' }); x += c.w; });
   y += HEADER_H;
 
   doc.setFont('helvetica', 'normal');
@@ -149,21 +123,12 @@ async function exportPDF(entries, year, month, employeeName) {
     const balStr = bal === 0 ? '' : (bal > 0 ? '+' : '') + bal;
 
     const vals = [
-      getDayName(e.date),
-      formatDateIT(e.date),
-      e.ticket || '',
-      e.contractHours || '',
-      e.workedHours || '',
-      e.sickHours || '',
-      e.holidayHours || '',
-      e.recoveryAbsenceHours || '',
-      e.supplementaryHours || '',
-      e.overtimeDayHours || '',
-      e.overtimeNightHours || '',
-      e.accruedHours || '',
-      balStr,
-      (e.notes || '').substring(0, 28),
-      ''
+      getDayName(e.date), formatDateIT(e.date),
+      e.ticket || '', e.contractHours || '', e.workedHours || '',
+      e.sickHours || '', e.holidayHours || '', e.recoveryAbsenceHours || '',
+      e.supplementaryHours || '', e.overtimeDayHours || '',
+      e.overtimeNightHours || '', e.accruedHours || '',
+      balStr, (e.notes || '').substring(0, 28), ''
     ];
 
     vals.forEach((v, i) => {
@@ -176,11 +141,9 @@ async function exportPDF(entries, year, month, employeeName) {
     doc.rect(ML, y, COL_W, ROW_H, 'S');
     y += ROW_H;
     rowIdx++;
-
     if (y > PAGE_H - 20) { doc.addPage(); y = 15; }
   }
 
-  // Riga totali
   const totals = calcMonthlyTotals(entries);
   const totBal = totals.balanceHours;
   const totBalStr = totBal === 0 ? '0' : (totBal > 0 ? '+' : '') + totBal;
@@ -191,19 +154,11 @@ async function exportPDF(entries, year, month, employeeName) {
   doc.setFont('helvetica', 'bold');
   x = ML;
   const totVals = [
-    'TOT', '',
-    totals.tickets,
-    totals.contractHours,
-    totals.workedHours,
-    totals.sickHours || '',
-    totals.holidayHours || '',
-    totals.recoveryHours || '',
-    totals.supplementaryHours || '',
-    totals.overtimeDayHours || '',
-    totals.overtimeNightHours || '',
-    totals.accruedHours || '',
-    totBalStr,
-    '', ''
+    'TOT', '', totals.tickets, totals.contractHours, totals.workedHours,
+    totals.sickHours || '', totals.holidayHours || '', totals.recoveryHours || '',
+    totals.supplementaryHours || '', totals.overtimeDayHours || '',
+    totals.overtimeNightHours || '', totals.accruedHours || '',
+    totBalStr, '', ''
   ];
   totVals.forEach((v, i) => {
     const str = v === 0 ? '' : String(v);
