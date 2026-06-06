@@ -228,8 +228,7 @@ async function onDateChange() {
   // Pausa = 0 automaticamente per sabato, domenica
   const dow = new Date(d + 'T00:00:00').getDay();
   const isWeekend = dow === 0 || dow === 6;
-  const isFestivo = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
-  if (isWeekend || isFestivo) {
+  if (isWeekend) {
     document.getElementById('entry-break').value = 0;
   } else {
     if (!editingEntryId) {
@@ -282,16 +281,18 @@ function updateCalcPreview() {
   const isSmart = document.getElementById('entry-smart') && document.getElementById('entry-smart').checked;
   const isFestivo = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
 
-  // Pausa = 0 per festivo
-  if (isFestivo) {
-    document.getElementById('entry-break').value = 0;
+  // Pausa = 0 solo per festivo
+  const dateVal = document.getElementById('entry-date').value;
+  if (dateVal) {
+    const isFestivoCheck = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
+    if (isFestivoCheck) document.getElementById('entry-break').value = 0;
   }
 
   const breakMin = parseInt(document.getElementById('entry-break').value) || 0;
   const contract = parseFloat(document.getElementById('entry-contract').value) || 0;
 
   const worked = calcWorkedHours(checkIn, checkOut, breakMin);
-  const ticket = (isSmart || isFestivo) ? 0 : calcTicket(worked);
+  const ticket = (isFestivo || isSmart || (document.getElementById('entry-travel') && document.getElementById('entry-travel').checked)) ? 0 : calcTicket(worked);
   const diff = calcDifference(worked, contract);
 
   document.getElementById('calc-worked').textContent = formatHours(worked);
@@ -310,7 +311,7 @@ async function saveEntry_form() {
   const dow = new Date(date + 'T00:00:00').getDay();
   const isWeekendDay = dow === 0 || dow === 6;
   const isFestivoDay = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
-  const breakMinutes = (isWeekendDay || isFestivoDay) ? 0 : (parseInt(document.getElementById('entry-break').value) || appSettings.defaultBreakMinutes);
+  const breakMinutes = (isWeekendDay || isFestivoDay) ? 0 : (parseInt(document.getElementById('entry-break').value) || 0);
   const contractHours = parseFloat(document.getElementById('entry-contract').value) || getContractHoursForDate(date);
   const workedHours = calcWorkedHours(checkIn, checkOut, breakMinutes);
   const ticket = calcTicket(workedHours);
