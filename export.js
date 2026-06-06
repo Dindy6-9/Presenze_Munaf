@@ -2,6 +2,12 @@
 // EXPORT.JS - CSV e PDF
 // =============================================
 
+function calcTicketCorretto(e) {
+  // Ticket = 0 se smart working, trasferta o festivo
+  if (e.smartWorking || e.festivoFlag || e.travel) return 0;
+  return (e.workedHours || 0) >= 6 ? 1 : 0;
+}
+
 function fmtOre(n) {
   if (!n || n === 0) return '';
   const sign = n < 0 ? '-' : '';
@@ -25,7 +31,7 @@ function exportCSV(entries, year, month, employeeName) {
     return [
       getDayName(e.date),
       formatDateIT(e.date),
-      e.ticket || 0,
+      calcTicketCorretto(e),
       fmtOre(e.contractHours),
       fmtOre(e.workedHours),
       fmtOre(e.sickHours),
@@ -128,7 +134,7 @@ async function exportPDF(entries, year, month, employeeName) {
 
     const vals = [
       getDayName(e.date), formatDateIT(e.date),
-      e.ticket || '', fmtOre(e.contractHours), fmtOre(e.workedHours),
+      calcTicketCorretto(e) || '', fmtOre(e.contractHours), fmtOre(e.workedHours),
       fmtOre(e.sickHours), fmtOre(e.holidayHours), fmtOre(e.recoveryAbsenceHours),
       fmtOre(e.supplementaryHours), fmtOre(e.overtimeDayHours),
       fmtOre(e.overtimeNightHours), fmtOre(e.accruedHours),

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'presenze-munaf-v8c';
+const CACHE_NAME = 'presenze-munaf-v6';
 const ASSETS = [
   './',
   './index.html',
