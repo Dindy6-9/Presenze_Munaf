@@ -531,6 +531,20 @@ async function doExportCSV() {
   showToast('CSV esportato!', 'success');
 }
 
+async function doExportXLSX() {
+  const year  = parseInt(document.getElementById('report-year').value)  || currentYear();
+  const month = parseInt(document.getElementById('report-month').value) || currentMonth();
+  const processed = (await getEntriesByMonth(year, month)).map(processEntry);
+  showToast('Generazione XLSX in corso...', 'info');
+  try {
+    await exportXLSX(processed, year, month, appSettings.employeeName);
+    showToast('XLSX esportato!', 'success');
+  } catch (e) {
+    showToast('Errore generazione XLSX', 'error');
+    console.error(e);
+  }
+}
+
 async function doExportPDF() {
   const year  = parseInt(document.getElementById('report-year').value)  || currentYear();
   const month = parseInt(document.getElementById('report-month').value) || currentMonth();

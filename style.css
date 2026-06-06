@@ -950,3 +950,5 @@ select option { background: #1e293b; }
   transition: all 0.15s;
 }
 .btn-day-nav:active { background: var(--primary); transform: scale(0.92); }
+
+.btn-xlsx { background: #1d6f42; color: white; }

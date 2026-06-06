@@ -69,6 +69,96 @@ function exportCSV(entries, year, month, employeeName) {
   URL.revokeObjectURL(url);
 }
 
+async function exportXLSX(entries, year, month, employeeName) {
+  // Carica SheetJS se non presente
+  if (!window.XLSX) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  const wb = window.XLSX.utils.book_new();
+  const wsData = [];
+
+  // Intestazione
+  wsData.push([
+    'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate (arrot.)',
+    'Malattia','Ferie','Assenza Recupero','Supplementari',
+    'Straordinario Diurno','Straordinario Notturno','Accantonate',
+    'Saldo Giornaliero','Trasferta','Note'
+  ]);
+
+  // Righe dati — le ore in formato numerico Excel (frazioni di giorno)
+  entries.forEach((e, i) => {
+    const rowNum = i + 2; // riga Excel (1=header, 2=prima riga dati)
+    const bal = calcDailyBalance(e);
+    const balStr = bal === 0 ? '' : (bal > 0 ? '+' : '') + fmtOre(bal);
+
+    // Converti ore decimali in valore Excel (ore/24)
+    const oreVal = (e.workedHours || 0) / 24;
+
+    // La formula usa la cella della colonna E (ore lavorate)
+    // Ma siccome inseriamo direttamente il valore numerico,
+    // usiamo la formula sulla cella stessa
+    const colE = `E${rowNum}`;
+
+    wsData.push([
+      getDayName(e.date),
+      formatDateIT(e.date),
+      calcTicketCorretto(e),
+      fmtOre(e.contractHours),
+      { f: `=(HOUR(${colE})+IF(MINUTE(${colE})<8,0,IF(MINUTE(${colE})<23,15,IF(MINUTE(${colE})<38,30,IF(MINUTE(${colE})<53,45,60))))/60)/24`, v: oreVal, t: 'n', z: '[h]:mm' },
+      fmtOre(e.sickHours),
+      fmtOre(e.holidayHours),
+      fmtOre(e.recoveryAbsenceHours),
+      fmtOre(e.supplementaryHours),
+      fmtOre(e.overtimeDayHours),
+      fmtOre(e.overtimeNightHours),
+      fmtOre(e.accruedHours),
+      balStr,
+      e.travel ? 'Sì' : '',
+      (e.notes || '').replace(/
+/g, ' ')
+    ]);
+  });
+
+  // Riga totali
+  const totals = calcMonthlyTotals(entries);
+  const totBal = totals.balanceHours;
+  const totBalStr = totBal === 0 ? '0:00' : (totBal > 0 ? '+' : '') + fmtOre(totBal);
+  const lastRow = entries.length + 1;
+  wsData.push([
+    'TOTALE', '',
+    entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
+    fmtOre(totals.contractHours),
+    { f: `=SUM(E2:E${lastRow})`, t: 'n', z: '[h]:mm' },
+    fmtOre(totals.sickHours),
+    fmtOre(totals.holidayHours),
+    fmtOre(totals.recoveryHours),
+    fmtOre(totals.supplementaryHours),
+    fmtOre(totals.overtimeDayHours),
+    fmtOre(totals.overtimeNightHours),
+    fmtOre(totals.accruedHours),
+    totBalStr,
+    '', ''
+  ]);
+
+  const ws = window.XLSX.utils.aoa_to_sheet(wsData);
+
+  // Larghezze colonne
+  ws['!cols'] = [
+    {wch:8},{wch:12},{wch:8},{wch:12},{wch:18},
+    {wch:12},{wch:10},{wch:16},{wch:14},
+    {wch:16},{wch:18},{wch:12},{wch:14},{wch:10},{wch:30}
+  ];
+
+  window.XLSX.utils.book_append_sheet(wb, ws, `${MONTHS_IT[month-1]} ${year}`);
+  window.XLSX.writeFile(wb, `presenze_${employeeName.replace(/\s/g,'_')}_${MONTHS_IT[month-1]}_${year}.xlsx`);
+}
+
 async function exportPDF(entries, year, month, employeeName) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     await new Promise((resolve, reject) => {
