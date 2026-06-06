@@ -64,6 +64,8 @@
             <option value="viola">Viola</option>
             <option value="grigio">Grigio Professionale</option>
             <option value="chiaro">Chiaro</option>
+            <option value="salvia">Verde Salvia</option>
+            <option value="azzurro">Azzurro Polvere</option>
           </select>
         </div>
       </div>
@@ -215,9 +217,9 @@
         </div>
       </div>
       <div class="form-section">
-        <div class="form-section-title">Trasferta</div>
+        <div class="form-section-title">Modalità giornata</div>
         <label class="toggle-row" style="border-bottom:1px solid var(--border);">
-          <span>In trasferta</span>
+          <span>✈️ In trasferta</span>
           <span class="toggle">
             <input type="checkbox" id="entry-travel"
               onchange="document.getElementById('travel-desc-row').style.display=this.checked?'block':'none'">
@@ -230,6 +232,20 @@
             <input type="text" id="entry-travel-desc" placeholder="Dove / perché">
           </div>
         </div>
+        <label class="toggle-row" style="border-bottom:1px solid var(--border);">
+          <span>🏠 Smart Working</span>
+          <span class="toggle">
+            <input type="checkbox" id="entry-smart" onchange="updateCalcPreview()">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span>🎉 Giorno Festivo</span>
+          <span class="toggle">
+            <input type="checkbox" id="entry-holiday-flag" onchange="updateCalcPreview()">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
       </div>
       <div class="form-section">
         <div class="form-section-title">Note</div>
@@ -349,6 +365,8 @@
             <option value="viola">Viola</option>
             <option value="grigio">Grigio Professionale</option>
             <option value="chiaro">Chiaro</option>
+            <option value="salvia">Verde Salvia</option>
+            <option value="azzurro">Azzurro Polvere</option>
           </select>
         </div>
       </div>

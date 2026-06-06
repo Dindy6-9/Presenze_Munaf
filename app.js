@@ -60,7 +60,9 @@ const THEMES = {
   bordeaux: { primary: '#6b1e2e', accent: '#f43f5e', bg: '#1a0a10', surface: '#2d1218', text: '#fce7f3', subtext: '#f9a8d4', border: '#4a1525', row1: '#2d1218', row2: '#3d1a22' },
   viola:    { primary: '#3b1f6b', accent: '#a855f7', bg: '#0f0a1a', surface: '#1e1230', text: '#ede9fe', subtext: '#c4b5fd', border: '#3b2d6b', row1: '#1e1230', row2: '#271840' },
   grigio:   { primary: '#374151', accent: '#6b7280', bg: '#111827', surface: '#1f2937', text: '#f9fafb', subtext: '#9ca3af', border: '#374151', row1: '#1f2937', row2: '#273040' },
-  chiaro:   { primary: '#1e40af', accent: '#3b82f6', bg: '#f8fafc', surface: '#ffffff', text: '#1e293b', subtext: '#64748b', border: '#e2e8f0', row1: '#f8fafc', row2: '#f1f5f9' }
+  chiaro:   { primary: '#1e40af', accent: '#3b82f6', bg: '#f8fafc', surface: '#ffffff', text: '#1e293b', subtext: '#64748b', border: '#e2e8f0', row1: '#f8fafc', row2: '#f1f5f9' },
+  salvia:   { primary: '#4a7c59', accent: '#7fb98a', bg: '#f0f5f1', surface: '#ffffff', text: '#2d3b30', subtext: '#6b8f72', border: '#c8dece', row1: '#f0f5f1', row2: '#e4ede6' },
+  azzurro:  { primary: '#4a7fa5', accent: '#7ab3d0', bg: '#f0f5fa', surface: '#ffffff', text: '#1e3048', subtext: '#6b8faa', border: '#c0d8e8', row1: '#f0f5fa', row2: '#e2eef5' }
 };
 
 function applyTheme(themeName) {
@@ -185,6 +187,8 @@ function resetForm() {
   });
   document.getElementById('entry-travel').checked = false;
   document.getElementById('travel-desc-row').style.display = 'none';
+  if (document.getElementById('entry-smart')) document.getElementById('entry-smart').checked = false;
+  if (document.getElementById('entry-holiday-flag')) document.getElementById('entry-holiday-flag').checked = false;
   updateCalcPreview();
 }
 
@@ -206,6 +210,8 @@ function fillForm(e) {
   set('entry-travel-desc', e.travelDescription);
   document.getElementById('entry-travel').checked = !!e.travel;
   document.getElementById('travel-desc-row').style.display = e.travel ? 'block' : 'none';
+  if (document.getElementById('entry-smart')) document.getElementById('entry-smart').checked = !!e.smartWorking;
+  if (document.getElementById('entry-holiday-flag')) document.getElementById('entry-holiday-flag').checked = !!e.festivoFlag;
   updateCalcPreview();
 }
 
@@ -226,9 +232,11 @@ function updateCalcPreview() {
   const checkOut = document.getElementById('entry-checkout').value;
   const breakMin = parseInt(document.getElementById('entry-break').value) || 0;
   const contract = parseFloat(document.getElementById('entry-contract').value) || 0;
+  const isSmart = document.getElementById('entry-smart') && document.getElementById('entry-smart').checked;
+  const isFestivo = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
 
   const worked = calcWorkedHours(checkIn, checkOut, breakMin);
-  const ticket = calcTicket(worked);
+  const ticket = (isSmart || isFestivo) ? 0 : calcTicket(worked);
   const diff = calcDifference(worked, contract);
 
   document.getElementById('calc-worked').textContent = formatHours(worked);
@@ -263,7 +271,22 @@ async function saveEntry_form() {
     accruedHours: parseFloat(document.getElementById('entry-accrued').value) || 0,
     travel: document.getElementById('entry-travel').checked,
     travelDescription: document.getElementById('entry-travel-desc').value,
-    notes: document.getElementById('entry-notes').value
+    smartWorking: document.getElementById('entry-smart') ? document.getElementById('entry-smart').checked : false,
+    festivoFlag: document.getElementById('entry-holiday-flag') ? document.getElementById('entry-holiday-flag').checked : false,
+    notes: (() => {
+      const base = document.getElementById('entry-notes').value;
+      const tags = [];
+      if (document.getElementById('entry-smart') && document.getElementById('entry-smart').checked) tags.push('🏠 Smart Working');
+      if (document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked) tags.push('🎉 Festivo');
+      if (document.getElementById('entry-travel') && document.getElementById('entry-travel').checked) {
+        const desc = document.getElementById('entry-travel-desc').value;
+        tags.push('✈️ Trasferta' + (desc ? ': ' + desc : ''));
+      }
+      const autoNote = tags.join(' | ');
+      if (!base) return autoNote;
+      if (!autoNote) return base;
+      return autoNote + (base ? ' — ' + base : '');
+    })()
   };
 
   await saveEntry(entry);

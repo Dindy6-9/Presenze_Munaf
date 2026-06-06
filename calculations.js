@@ -52,11 +52,20 @@ function processEntry(entry) {
 
 function calcMonthlyTotals(entries) {
   const totals = {
-    contractHours: 0, workedHours: 0, sickHours: 0,
-    holidayHours: 0, recoveryHours: 0, supplementaryHours: 0,
-    overtimeDayHours: 0, overtimeNightHours: 0,
-    accruedHours: 0, tickets: 0, balanceHours: 0, travelDays: 0
+    contractHours: 0,
+    workedHours: 0,
+    sickHours: 0,
+    holidayHours: 0,
+    recoveryHours: 0,
+    supplementaryHours: 0,
+    overtimeDayHours: 0,
+    overtimeNightHours: 0,
+    accruedHours: 0,
+    tickets: 0,
+    balanceHours: 0,
+    travelDays: 0
   };
+
   for (const e of entries) {
     totals.contractHours      += e.contractHours || 0;
     totals.workedHours        += e.workedHours || 0;
@@ -70,14 +79,22 @@ function calcMonthlyTotals(entries) {
     totals.tickets            += e.ticket || 0;
     if (e.travel) totals.travelDays++;
   }
+
+  // Saldo calcolato SOLO dai campi manuali (algebrico)
   totals.balanceHours = Math.round((
-    totals.supplementaryHours + totals.overtimeDayHours +
-    totals.overtimeNightHours + totals.accruedHours -
-    totals.sickHours - totals.holidayHours - totals.recoveryHours
+    totals.supplementaryHours +
+    totals.overtimeDayHours +
+    totals.overtimeNightHours +
+    totals.accruedHours -
+    totals.sickHours -
+    totals.holidayHours -
+    totals.recoveryHours
   ) * 100) / 100;
+
   return totals;
 }
 
+// Saldo giornaliero dai campi manuali
 function calcDailyBalance(entry) {
   const plus = (entry.supplementaryHours || 0) + (entry.overtimeDayHours || 0) +
                (entry.overtimeNightHours || 0) + (entry.accruedHours || 0);
@@ -87,11 +104,14 @@ function calcDailyBalance(entry) {
 }
 
 const DAYS_IT = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
-const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
-  'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const MONTHS_IT = [
+  'Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+  'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'
+];
 
 function getDayName(dateStr) {
-  return DAYS_IT[new Date(dateStr + 'T00:00:00').getDay()];
+  const d = new Date(dateStr + 'T00:00:00');
+  return DAYS_IT[d.getDay()];
 }
 
 function formatDateIT(dateStr) {
@@ -99,10 +119,13 @@ function formatDateIT(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-function getDaysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+function getDaysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
 
 function getFirstDayOfMonth(year, month) {
-  const day = new Date(year, month - 1, 1).getDay();
+  const d = new Date(year, month - 1, 1);
+  let day = d.getDay();
   return day === 0 ? 6 : day - 1;
 }
 
