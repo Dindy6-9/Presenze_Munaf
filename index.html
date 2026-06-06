@@ -128,8 +128,15 @@
         <div class="form-section-title">Data</div>
         <div class="field-row single">
           <div class="field">
-            <label>Data</label>
-            <input type="date" id="entry-date">
+            <div class="date-nav-row">
+              <button class="btn-day-nav" onclick="navigateDay(-1)">‹</button>
+              <div class="date-center">
+                <label>Data</label>
+                <input type="date" id="entry-date" onchange="onDateChange()">
+              </div>
+              <button class="btn-day-nav" onclick="navigateDay(1)">›</button>
+              <button class="btn-save-top" onclick="saveEntry_form()">💾 Salva</button>
+            </div>
           </div>
         </div>
       </div>
@@ -256,7 +263,6 @@
           </div>
         </div>
       </div>
-      <button class="btn-save" onclick="saveEntry_form()">💾 Salva giornata</button>
     </div>
   </div>
 

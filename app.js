@@ -159,22 +159,7 @@ async function openNewEntry(date) {
   document.getElementById('form-title').textContent = 'Nuova Giornata';
   resetForm();
   document.getElementById('entry-date').value = d;
-  document.getElementById('entry-contract').value = getContractHoursForDate(d);
-  document.getElementById('entry-break').value = appSettings.defaultBreakMinutes;
-
-  document.getElementById('entry-date').onchange = function() {
-    if (!editingEntryId) {
-      document.getElementById('entry-contract').value = getContractHoursForDate(this.value);
-      updateCalcPreview();
-    }
-  };
-
-  const existing = await getEntryByDate(d);
-  if (existing) {
-    editingEntryId = existing.id;
-    document.getElementById('form-title').textContent = 'Modifica Giornata';
-    fillForm(existing);
-  }
+  await onDateChange();
   showView('form');
 }
 
@@ -185,10 +170,12 @@ function resetForm() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('entry-travel').checked = false;
+  // Reset tutti i toggle
+  ['entry-travel','entry-smart','entry-holiday-flag'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  });
   document.getElementById('travel-desc-row').style.display = 'none';
-  if (document.getElementById('entry-smart')) document.getElementById('entry-smart').checked = false;
-  if (document.getElementById('entry-holiday-flag')) document.getElementById('entry-holiday-flag').checked = false;
   updateCalcPreview();
 }
 
@@ -215,6 +202,68 @@ function fillForm(e) {
   updateCalcPreview();
 }
 
+// Naviga tra i giorni nel form
+function navigateDay(dir) {
+  const dateEl = document.getElementById('entry-date');
+  if (!dateEl.value) {
+    dateEl.value = todayStr();
+  }
+  const d = new Date(dateEl.value + 'T00:00:00');
+  d.setDate(d.getDate() + dir);
+  const newDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  dateEl.value = newDate;
+  onDateChange();
+}
+
+async function onDateChange() {
+  const dateEl = document.getElementById('entry-date');
+  const d = dateEl.value;
+  if (!d) return;
+
+  // Aggiorna ore contratto in base al giorno
+  if (!editingEntryId) {
+    document.getElementById('entry-contract').value = getContractHoursForDate(d);
+  }
+
+  // Pausa = 0 automaticamente per sabato, domenica
+  const dow = new Date(d + 'T00:00:00').getDay();
+  const isWeekend = dow === 0 || dow === 6;
+  const isFestivo = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
+  if (isWeekend || isFestivo) {
+    document.getElementById('entry-break').value = 0;
+  } else {
+    if (!editingEntryId) {
+      document.getElementById('entry-break').value = appSettings.defaultBreakMinutes;
+    }
+  }
+
+  // Carica eventuale registrazione esistente per quella data
+  const existing = await getEntryByDate(d);
+  if (existing) {
+    editingEntryId = existing.id;
+    document.getElementById('form-title').textContent = 'Modifica Giornata';
+    fillForm(existing);
+  } else {
+    editingEntryId = null;
+    document.getElementById('form-title').textContent = 'Nuova Giornata';
+    // Reset solo i campi variabili, non la data
+    ['entry-checkin','entry-checkout','entry-sick','entry-holiday',
+     'entry-recovery','entry-supp','entry-otday','entry-otnight',
+     'entry-accrued','entry-travel-desc','entry-notes'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    ['entry-travel','entry-smart','entry-holiday-flag'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+    document.getElementById('travel-desc-row').style.display = 'none';
+    document.getElementById('entry-contract').value = getContractHoursForDate(d);
+    document.getElementById('entry-break').value = (isWeekend || isFestivo) ? 0 : appSettings.defaultBreakMinutes;
+    updateCalcPreview();
+  }
+}
+
 function timbraOra(fieldId) {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
@@ -230,10 +279,16 @@ function timbraOra(fieldId) {
 function updateCalcPreview() {
   const checkIn = document.getElementById('entry-checkin').value;
   const checkOut = document.getElementById('entry-checkout').value;
-  const breakMin = parseInt(document.getElementById('entry-break').value) || 0;
-  const contract = parseFloat(document.getElementById('entry-contract').value) || 0;
   const isSmart = document.getElementById('entry-smart') && document.getElementById('entry-smart').checked;
   const isFestivo = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
+
+  // Pausa = 0 per festivo
+  if (isFestivo) {
+    document.getElementById('entry-break').value = 0;
+  }
+
+  const breakMin = parseInt(document.getElementById('entry-break').value) || 0;
+  const contract = parseFloat(document.getElementById('entry-contract').value) || 0;
 
   const worked = calcWorkedHours(checkIn, checkOut, breakMin);
   const ticket = (isSmart || isFestivo) ? 0 : calcTicket(worked);
@@ -252,7 +307,10 @@ async function saveEntry_form() {
 
   const checkIn = document.getElementById('entry-checkin').value;
   const checkOut = document.getElementById('entry-checkout').value;
-  const breakMinutes = parseInt(document.getElementById('entry-break').value) || appSettings.defaultBreakMinutes;
+  const dow = new Date(date + 'T00:00:00').getDay();
+  const isWeekendDay = dow === 0 || dow === 6;
+  const isFestivoDay = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
+  const breakMinutes = (isWeekendDay || isFestivoDay) ? 0 : (parseInt(document.getElementById('entry-break').value) || appSettings.defaultBreakMinutes);
   const contractHours = parseFloat(document.getElementById('entry-contract').value) || getContractHoursForDate(date);
   const workedHours = calcWorkedHours(checkIn, checkOut, breakMinutes);
   const ticket = calcTicket(workedHours);
@@ -274,7 +332,9 @@ async function saveEntry_form() {
     smartWorking: document.getElementById('entry-smart') ? document.getElementById('entry-smart').checked : false,
     festivoFlag: document.getElementById('entry-holiday-flag') ? document.getElementById('entry-holiday-flag').checked : false,
     notes: (() => {
-      const base = document.getElementById('entry-notes').value;
+      // Rimuovi eventuali tag automatici già presenti nella nota
+      let base = document.getElementById('entry-notes').value || '';
+      base = base.replace(/🏠 Smart Working\s*\|?\s*/g, '').replace(/🎉 Festivo\s*\|?\s*/g, '').replace(/✈️ Trasferta[^—]*\s*\|?\s*/g, '').replace(/^\s*—\s*/, '').trim();
       const tags = [];
       if (document.getElementById('entry-smart') && document.getElementById('entry-smart').checked) tags.push('🏠 Smart Working');
       if (document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked) tags.push('🎉 Festivo');
@@ -285,7 +345,7 @@ async function saveEntry_form() {
       const autoNote = tags.join(' | ');
       if (!base) return autoNote;
       if (!autoNote) return base;
-      return autoNote + (base ? ' — ' + base : '');
+      return autoNote + ' — ' + base;
     })()
   };
 
