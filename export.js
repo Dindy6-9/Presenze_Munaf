@@ -1,9 +1,8 @@
 // =============================================
-// EXPORT.JS - CSV e PDF
+// EXPORT.JS - CSV, PDF, XLSX
 // =============================================
 
 function calcTicketCorretto(e) {
-  // Ticket = 0 se smart working, trasferta o festivo
   if (e.smartWorking || e.festivoFlag || e.travel) return 0;
   return (e.workedHours || 0) >= 6 ? 1 : 0;
 }
@@ -17,6 +16,7 @@ function fmtOre(n) {
   return `${sign}${h}:${String(m).padStart(2,'0')}`;
 }
 
+// ---- CSV ----
 function exportCSV(entries, year, month, employeeName) {
   const header = [
     'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate',
@@ -42,7 +42,7 @@ function exportCSV(entries, year, month, employeeName) {
       fmtOre(e.overtimeNightHours),
       fmtOre(e.accruedHours),
       balStr,
-      e.travel ? 'Sì' : '',
+      e.travel ? 'Si' : '',
       (e.notes || '').replace(/;/g, ',').replace(/\n/g, ' ')
     ].join(';');
   });
@@ -51,12 +51,13 @@ function exportCSV(entries, year, month, employeeName) {
   const totBal = totals.balanceHours;
   const totBalStr = totBal === 0 ? '0:00' : (totBal > 0 ? '+' : '') + fmtOre(totBal);
   const totRow = [
-    'TOTALE','',totals.tickets,
-    fmtOre(totals.contractHours),fmtOre(totals.workedHours),
-    fmtOre(totals.sickHours),fmtOre(totals.holidayHours),
-    fmtOre(totals.recoveryHours),fmtOre(totals.supplementaryHours),
-    fmtOre(totals.overtimeDayHours),fmtOre(totals.overtimeNightHours),
-    fmtOre(totals.accruedHours),totBalStr,totals.travelDays || '',''
+    'TOTALE','',
+    entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
+    fmtOre(totals.contractHours), fmtOre(totals.workedHours),
+    fmtOre(totals.sickHours), fmtOre(totals.holidayHours),
+    fmtOre(totals.recoveryHours), fmtOre(totals.supplementaryHours),
+    fmtOre(totals.overtimeDayHours), fmtOre(totals.overtimeNightHours),
+    fmtOre(totals.accruedHours), totBalStr, '', ''
   ].join(';');
 
   const csv = '\uFEFF' + [header, ...rows, totRow].join('\r\n');
@@ -69,13 +70,14 @@ function exportCSV(entries, year, month, employeeName) {
   URL.revokeObjectURL(url);
 }
 
+// ---- XLSX ----
 async function exportXLSX(entries, year, month, employeeName) {
-  // Carica SheetJS se non presente
   if (!window.XLSX) {
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
-      s.onload = resolve; s.onerror = reject;
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
       document.head.appendChild(s);
     });
   }
@@ -83,7 +85,6 @@ async function exportXLSX(entries, year, month, employeeName) {
   const wb = window.XLSX.utils.book_new();
   const wsData = [];
 
-  // Intestazione
   wsData.push([
     'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate (arrot.)',
     'Malattia','Ferie','Assenza Recupero','Supplementari',
@@ -91,26 +92,15 @@ async function exportXLSX(entries, year, month, employeeName) {
     'Saldo Giornaliero','Trasferta','Note'
   ]);
 
-  // Righe dati — le ore in formato numerico Excel (frazioni di giorno)
-  entries.forEach((e, i) => {
-    const rowNum = i + 2; // riga Excel (1=header, 2=prima riga dati)
+  entries.forEach(e => {
     const bal = calcDailyBalance(e);
     const balStr = bal === 0 ? '' : (bal > 0 ? '+' : '') + fmtOre(bal);
-
-    // Converti ore decimali in valore Excel (ore/24)
-    const oreVal = (e.workedHours || 0) / 24;
-
-    // La formula usa la cella della colonna E (ore lavorate)
-    // Ma siccome inseriamo direttamente il valore numerico,
-    // usiamo la formula sulla cella stessa
-    const colE = `E${rowNum}`;
-
     wsData.push([
       getDayName(e.date),
       formatDateIT(e.date),
       calcTicketCorretto(e),
       fmtOre(e.contractHours),
-      { f: `=(HOUR(${colE})+IF(MINUTE(${colE})<8,0,IF(MINUTE(${colE})<23,15,IF(MINUTE(${colE})<38,30,IF(MINUTE(${colE})<53,45,60))))/60)/24`, v: oreVal, t: 'n', z: '[h]:mm' },
+      fmtOre(e.workedHours),
       fmtOre(e.sickHours),
       fmtOre(e.holidayHours),
       fmtOre(e.recoveryAbsenceHours),
@@ -119,38 +109,48 @@ async function exportXLSX(entries, year, month, employeeName) {
       fmtOre(e.overtimeNightHours),
       fmtOre(e.accruedHours),
       balStr,
-      e.travel ? 'Sì' : '',
-      (e.notes || '').replace(/
-/g, ' ')
+      e.travel ? 'Si' : '',
+      (e.notes || '').replace(/\n/g, ' ')
     ]);
   });
 
-  // Riga totali
   const totals = calcMonthlyTotals(entries);
   const totBal = totals.balanceHours;
   const totBalStr = totBal === 0 ? '0:00' : (totBal > 0 ? '+' : '') + fmtOre(totBal);
-  const lastRow = entries.length + 1;
   wsData.push([
-    'TOTALE', '',
+    'TOTALE','',
     entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
-    fmtOre(totals.contractHours),
-    { f: `=SUM(E2:E${lastRow})`, t: 'n', z: '[h]:mm' },
-    fmtOre(totals.sickHours),
-    fmtOre(totals.holidayHours),
-    fmtOre(totals.recoveryHours),
-    fmtOre(totals.supplementaryHours),
-    fmtOre(totals.overtimeDayHours),
-    fmtOre(totals.overtimeNightHours),
-    fmtOre(totals.accruedHours),
-    totBalStr,
-    '', ''
+    fmtOre(totals.contractHours), fmtOre(totals.workedHours),
+    fmtOre(totals.sickHours), fmtOre(totals.holidayHours),
+    fmtOre(totals.recoveryHours), fmtOre(totals.supplementaryHours),
+    fmtOre(totals.overtimeDayHours), fmtOre(totals.overtimeNightHours),
+    fmtOre(totals.accruedHours), totBalStr, '', ''
   ]);
 
   const ws = window.XLSX.utils.aoa_to_sheet(wsData);
 
-  // Larghezze colonne
+  // Aggiungi formula di arrotondamento al quarto d'ora sulla colonna E (Ore Lavorate)
+  // dalla riga 2 fino all'ultima riga dati
+  for (let i = 2; i <= entries.length + 1; i++) {
+    const cellRef = `E${i}`;
+    if (ws[cellRef]) {
+      const valOre = entries[i-2].workedHours || 0;
+      const h = Math.floor(valOre);
+      const minTot = Math.round((valOre - h) * 60);
+      // Arrotonda al quarto d'ora
+      let minArr;
+      if (minTot < 8) minArr = 0;
+      else if (minTot < 23) minArr = 15;
+      else if (minTot < 38) minArr = 30;
+      else if (minTot < 53) minArr = 45;
+      else { minArr = 0; }
+      const oreArr = minTot >= 53 ? h + 1 : h;
+      ws[cellRef].v = `${oreArr}:${String(minArr).padStart(2,'0')}`;
+    }
+  }
+
   ws['!cols'] = [
-    {wch:8},{wch:12},{wch:8},{wch:12},{wch:18},
+    {wch:8},{wch:12},{wch:8},{wch:12},{wch:16},
     {wch:12},{wch:10},{wch:16},{wch:14},
     {wch:16},{wch:18},{wch:12},{wch:14},{wch:10},{wch:30}
   ];
@@ -159,6 +159,7 @@ async function exportXLSX(entries, year, month, employeeName) {
   window.XLSX.writeFile(wb, `presenze_${employeeName.replace(/\s/g,'_')}_${MONTHS_IT[month-1]}_${year}.xlsx`);
 }
 
+// ---- PDF ----
 async function exportPDF(entries, year, month, employeeName) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     await new Promise((resolve, reject) => {
@@ -224,7 +225,8 @@ async function exportPDF(entries, year, month, employeeName) {
 
     const vals = [
       getDayName(e.date), formatDateIT(e.date),
-      calcTicketCorretto(e) || '', fmtOre(e.contractHours), fmtOre(e.workedHours),
+      calcTicketCorretto(e) || '',
+      fmtOre(e.contractHours), fmtOre(e.workedHours),
       fmtOre(e.sickHours), fmtOre(e.holidayHours), fmtOre(e.recoveryAbsenceHours),
       fmtOre(e.supplementaryHours), fmtOre(e.overtimeDayHours),
       fmtOre(e.overtimeNightHours), fmtOre(e.accruedHours),
@@ -254,7 +256,8 @@ async function exportPDF(entries, year, month, employeeName) {
   doc.setFont('helvetica', 'bold');
   x = ML;
   const totVals = [
-    'TOT', '', totals.tickets,
+    'TOT', '',
+    entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
     fmtOre(totals.contractHours), fmtOre(totals.workedHours),
     fmtOre(totals.sickHours), fmtOre(totals.holidayHours),
     fmtOre(totals.recoveryHours), fmtOre(totals.supplementaryHours),
