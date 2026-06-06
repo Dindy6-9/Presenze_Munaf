@@ -74,7 +74,7 @@ async function exportXLSX(entries, year, month, employeeName) {
   if (!window.XLSX) {
     await new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
       s.onload = resolve; s.onerror = reject;
       document.head.appendChild(s);
     });
