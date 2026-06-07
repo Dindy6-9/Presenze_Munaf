@@ -193,7 +193,8 @@ async function cleanOldSnapshots() {
   if (snapKeys.length > 4) {
     const toDelete = snapKeys.slice(0, snapKeys.length - 4);
     for (const k of toDelete) {
-      await saveSetting(k, null);
+      // Sovrascrive con stringa vuota invece di null per sicurezza
+      await saveSetting(k, '');
     }
   }
 }
@@ -224,15 +225,18 @@ async function restoreSnapshot(key) {
 }
 
 async function checkAndAutoSnapshot() {
-  // Controlla se e' passata una settimana dall'ultimo snapshot
-  const lastStr = await getSetting('snapshot_last');
-  const weekKey = getWeekKey();
-  const existingKey = await getSetting('snapshot_' + weekKey);
-  
-  if (!existingKey) {
-    // Non c'e' snapshot questa settimana — fallo
-    await saveSnapshot();
-    return true;
+  try {
+    // Controlla se esiste gia' snapshot questa settimana
+    const weekKey = getWeekKey();
+    let existing = null;
+    try { existing = await getSetting('snapshot_' + weekKey); } catch(e) {}
+    
+    if (!existing) {
+      await saveSnapshot();
+      return true;
+    }
+  } catch(e) {
+    console.log('Snapshot skip:', e);
   }
   return false;
 }
