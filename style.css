@@ -952,3 +952,12 @@ select option { background: #1e293b; }
 .btn-day-nav:active { background: var(--primary); transform: scale(0.92); }
 
 .btn-xlsx { background: #1d6f42; color: white; }
+
+/* Fix colori select report */
+.report-controls select option {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+select {
+  color: var(--text) !important;
+}

@@ -16,6 +16,12 @@ function fmtOre(n) {
   return `${sign}${h}:${String(m).padStart(2,'0')}`;
 }
 
+function oreToExcel(n) {
+  // Converte ore decimali in numero Excel (ore/24) per permettere somme
+  if (!n || n === 0) return 0;
+  return n / 24;
+}
+
 function arrotondaQuarto(workedHours) {
   if (!workedHours || workedHours === 0) return '';
   const h = Math.floor(workedHours);
@@ -97,56 +103,90 @@ async function exportXLSX(entries, year, month, employeeName) {
   }
 
   const wb = window.XLSX.utils.book_new();
-  const wsData = [];
+  const FMT_ORE = '[h]:mm'; // formato Excel per ore sommabili
 
-  wsData.push([
+  // Funzione cella ora numerica
+  function cOra(n) {
+    if (!n || n === 0) return { v: 0, t: 'n', z: FMT_ORE };
+    return { v: n / 24, t: 'n', z: FMT_ORE };
+  }
+
+  // Ore arrotondate al quarto d'ora come numero Excel
+  function cOraArr(n) {
+    if (!n || n === 0) return { v: 0, t: 'n', z: FMT_ORE };
+    const h = Math.floor(n);
+    const minTot = Math.round((n - h) * 60);
+    let minArr, hArr;
+    if (minTot < 8)       { minArr = 0;  hArr = h; }
+    else if (minTot < 23) { minArr = 15; hArr = h; }
+    else if (minTot < 38) { minArr = 30; hArr = h; }
+    else if (minTot < 53) { minArr = 45; hArr = h; }
+    else                  { minArr = 0;  hArr = h + 1; }
+    return { v: (hArr + minArr/60) / 24, t: 'n', z: FMT_ORE };
+  }
+
+  const headers = [
     'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate','Ore Arrotondate',
     'Malattia','Ferie','Assenza Recupero','Supplementari',
     'Straordinario Diurno','Straordinario Notturno','Accantonate',
     'Saldo Giornaliero','Trasferta','Note'
-  ]);
+  ];
+
+  const wsData = [headers];
 
   entries.forEach(e => {
     const bal = calcDailyBalance(e);
-    const balStr = bal === 0 ? '' : (bal > 0 ? '+' : '') + fmtOre(bal);
     wsData.push([
       getDayName(e.date),
       formatDateIT(e.date),
       calcTicketCorretto(e),
-      fmtOre(e.contractHours),
-      fmtOre(e.workedHours),
-      arrotondaQuarto(e.workedHours),
-      fmtOre(e.sickHours),
-      fmtOre(e.holidayHours),
-      fmtOre(e.recoveryAbsenceHours),
-      fmtOre(e.supplementaryHours),
-      fmtOre(e.overtimeDayHours),
-      fmtOre(e.overtimeNightHours),
-      fmtOre(e.accruedHours),
-      balStr,
+      cOra(e.contractHours),
+      cOra(e.workedHours),
+      cOraArr(e.workedHours),
+      cOra(e.sickHours),
+      cOra(e.holidayHours),
+      cOra(e.recoveryAbsenceHours),
+      cOra(e.supplementaryHours),
+      cOra(e.overtimeDayHours),
+      cOra(e.overtimeNightHours),
+      cOra(e.accruedHours),
+      { v: bal / 24, t: 'n', z: FMT_ORE },
       e.travel ? 'Si' : '',
-      (e.notes || '').replace(/\n/g, ' ')
+      (e.notes || '').replace(/
+/g, ' ')
     ]);
   });
 
+  // Riga totali con formula SOMMA
+  const lastDataRow = entries.length + 1;
   const totals = calcMonthlyTotals(entries);
-  const totBal = totals.balanceHours;
-  const totBalStr = totBal === 0 ? '0:00' : (totBal > 0 ? '+' : '') + fmtOre(totBal);
   wsData.push([
     'TOTALE','',
     entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
-    fmtOre(totals.contractHours), fmtOre(totals.workedHours), '',
-    fmtOre(totals.sickHours), fmtOre(totals.holidayHours),
-    fmtOre(totals.recoveryHours), fmtOre(totals.supplementaryHours),
-    fmtOre(totals.overtimeDayHours), fmtOre(totals.overtimeNightHours),
-    fmtOre(totals.accruedHours), totBalStr, '', ''
+    { f: `SUM(D2:D${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(E2:E${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(F2:F${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(G2:G${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(H2:H${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(I2:I${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(J2:J${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(K2:K${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(L2:L${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(M2:M${lastDataRow})`, t: 'n', z: FMT_ORE },
+    { f: `SUM(N2:N${lastDataRow})`, t: 'n', z: FMT_ORE },
+    '', ''
   ]);
 
   const ws = window.XLSX.utils.aoa_to_sheet(wsData);
+
+  // Intestazioni ruotate (altezza riga 1 maggiore)
+  ws['!rows'] = [{ hpt: 80 }];
+
+  // Larghezze colonne
   ws['!cols'] = [
-    {wch:8},{wch:12},{wch:8},{wch:12},{wch:14},{wch:16},
-    {wch:12},{wch:10},{wch:16},{wch:14},
-    {wch:16},{wch:18},{wch:12},{wch:14},{wch:10},{wch:30}
+    {wch:8},{wch:11},{wch:7},{wch:12},{wch:12},{wch:12},
+    {wch:10},{wch:9},{wch:12},{wch:12},
+    {wch:13},{wch:13},{wch:11},{wch:11},{wch:8},{wch:30}
   ];
 
   window.XLSX.utils.book_append_sheet(wb, ws, `${MONTHS_IT[month-1]} ${year}`);
