@@ -152,8 +152,7 @@ async function exportXLSX(entries, year, month, employeeName) {
       cOra(e.accruedHours),
       { v: bal / 24, t: 'n', z: FMT_ORE },
       e.travel ? 'Si' : '',
-      (e.notes || '').replace(/
-/g, ' ')
+      (e.notes || '').split('\n').join(' ')
     ]);
   });
 
