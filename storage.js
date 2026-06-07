@@ -24,8 +24,6 @@ async function initDB() {
   });
 }
 
-// ---- SETTINGS ----
-
 async function saveSetting(key, value) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('settings', 'readwrite');
@@ -56,8 +54,6 @@ async function getAllSettings() {
     req.onerror = (e) => reject(e.target.error);
   });
 }
-
-// ---- ENTRIES ----
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -115,8 +111,6 @@ async function deleteEntry(id) {
   });
 }
 
-// ---- BACKUP ----
-
 async function exportBackup() {
   const entries = await getAllEntries();
   const settings = await getAllSettings();
@@ -137,11 +131,9 @@ async function importBackup(file) {
       try {
         const backup = JSON.parse(e.target.result);
         if (!backup.entries || !backup.settings) throw new Error('File backup non valido');
-        // Restore settings
         for (const [key, value] of Object.entries(backup.settings)) {
           await saveSetting(key, value);
         }
-        // Restore entries
         for (const entry of backup.entries) {
           await saveEntry(entry);
         }
@@ -151,92 +143,4 @@ async function importBackup(file) {
     reader.onerror = () => reject(new Error('Errore lettura file'));
     reader.readAsText(file);
   });
-}
-
-// =============================================
-// SNAPSHOT AUTOMATICI SETTIMANALI
-// =============================================
-
-async function saveSnapshot() {
-  const entries = await getAllEntries();
-  const settings = await getAllSettings();
-  const snapshot = {
-    date: new Date().toISOString(),
-    dateLabel: formatSnapshotDate(new Date()),
-    entries: entries,
-    settings: settings
-  };
-  // Salva snapshot con chiave data settimana
-  const weekKey = getWeekKey();
-  await saveSetting('snapshot_' + weekKey, JSON.stringify(snapshot));
-  await saveSetting('snapshot_last', new Date().toISOString());
-  // Mantieni solo ultimi 4 snapshot (4 settimane)
-  await cleanOldSnapshots();
-  return snapshot;
-}
-
-function formatSnapshotDate(d) {
-  return d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
-}
-
-function getWeekKey() {
-  const d = new Date();
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-  return d.getFullYear() + '_W' + String(week).padStart(2,'0');
-}
-
-async function cleanOldSnapshots() {
-  const all = await getAllSettings();
-  const snapKeys = Object.keys(all).filter(k => k.startsWith('snapshot_') && k !== 'snapshot_last').sort();
-  // Tieni solo gli ultimi 4
-  if (snapKeys.length > 4) {
-    const toDelete = snapKeys.slice(0, snapKeys.length - 4);
-    for (const k of toDelete) {
-      // Sovrascrive con stringa vuota invece di null per sicurezza
-      await saveSetting(k, '');
-    }
-  }
-}
-
-async function getSnapshots() {
-  const all = await getAllSettings();
-  const snapKeys = Object.keys(all).filter(k => k.startsWith('snapshot_') && k !== 'snapshot_last').sort().reverse();
-  const snapshots = [];
-  for (const k of snapKeys) {
-    if (all[k]) {
-      try {
-        const snap = JSON.parse(all[k]);
-        snapshots.push({ key: k, date: snap.dateLabel, entries: snap.entries.length });
-      } catch(e) {}
-    }
-  }
-  return snapshots;
-}
-
-async function restoreSnapshot(key) {
-  const all = await getAllSettings();
-  if (!all[key]) throw new Error('Snapshot non trovato');
-  const snap = JSON.parse(all[key]);
-  for (const entry of snap.entries) {
-    await saveEntry(entry);
-  }
-  return snap;
-}
-
-async function checkAndAutoSnapshot() {
-  try {
-    // Controlla se esiste gia' snapshot questa settimana
-    const weekKey = getWeekKey();
-    let existing = null;
-    try { existing = await getSetting('snapshot_' + weekKey); } catch(e) {}
-    
-    if (!existing) {
-      await saveSnapshot();
-      return true;
-    }
-  } catch(e) {
-    console.log('Snapshot skip:', e);
-  }
-  return false;
 }
