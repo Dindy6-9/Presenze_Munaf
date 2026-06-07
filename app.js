@@ -485,11 +485,12 @@ async function renderReport() {
 
   document.getElementById('report-title').textContent = `${MONTHS_IT[month - 1]} ${year}`;
 
+  const ticketTot = processed.reduce((s, e) => s + calcTicketCorretto(e), 0);
   const fields = [
     ['Ore Contratto',     formatHours(totals.contractHours)],
     ['Ore Lavorate',      formatHours(totals.workedHours)],
     ['Saldo Ore',        `${totals.balanceHours > 0 ? '+' : ''}${formatHours(totals.balanceHours)}`],
-    ['Ticket',            totals.tickets],
+    ['Ticket',            ticketTot],
     ['Malattia',          formatHours(totals.sickHours)],
     ['Ferie',             formatHours(totals.holidayHours)],
     ['Assenza Recupero',  formatHours(totals.recoveryHours)],
@@ -509,7 +510,7 @@ async function renderReport() {
       const type = getEntryType(e);
       return `<tr class="row-${type || 'empty'}">
         <td>${getDayName(e.date)}</td><td>${formatDateIT(e.date)}</td>
-        <td>${e.ticket || 0}</td><td>${e.contractHours || 0}</td>
+        <td>${calcTicketCorretto(e)}</td><td>${e.contractHours || 0}</td>
         <td>${formatHours(e.workedHours)}</td><td>${e.sickHours || 0}</td>
         <td>${e.holidayHours || 0}</td><td>${e.recoveryAbsenceHours || 0}</td>
         <td>${e.supplementaryHours || 0}</td><td>${e.overtimeDayHours || 0}</td>
