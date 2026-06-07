@@ -101,8 +101,9 @@ async function exportXLSX(entries, year, month, employeeName) {
   }
 
   function excelOreNeg(n) {
+    // Restituisce decimale negativo es. -7.5 sommabile in Excel
     if (!n || n === 0) return null;
-    return -(n / 24);
+    return -n;
   }
 
   function excelArrotonda(n) {
@@ -171,7 +172,7 @@ async function exportXLSX(entries, year, month, employeeName) {
   const ws = window.XLSX.utils.aoa_to_sheet(wsData);
 
   // Applica formato ore a tutte le colonne ore (D-M tranne N testo)
-  const oreColumns = ['D','E','F','G','H','I','J','K','L','M'];
+  const oreColumns = ['D','E','F','J','K','L','M']; // assenze G,H,I sono decimali
   const totalRows = entries.length + 2;
 
   for (let r = 2; r <= totalRows; r++) {
