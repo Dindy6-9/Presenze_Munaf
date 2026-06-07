@@ -36,6 +36,8 @@ async function init() {
 
   showView('dashboard');
   await refreshDashboard();
+  // Snapshot automatico settimanale
+  await checkAndAutoSnapshot();
 }
 
 // =============================================
@@ -354,6 +356,8 @@ async function saveEntry_form() {
   showToast('Giornata salvata!', 'success');
   showView('dashboard');
   await refreshDashboard();
+  // Snapshot automatico settimanale
+  await checkAndAutoSnapshot();
 }
 
 // =============================================
@@ -571,6 +575,39 @@ async function loadSettings() {
   document.getElementById('set-theme').value     = appSettings.theme || 'grafite';
 }
 
+async function loadSnapshots() {
+  const snaps = await getSnapshots();
+  const el = document.getElementById('snapshot-list');
+  if (!el) return;
+  if (snaps.length === 0) {
+    el.innerHTML = '<div style="color:var(--subtext);font-size:13px;padding:8px 0;">Nessuno snapshot disponibile</div>';
+    return;
+  }
+  el.innerHTML = snaps.map(s =>
+    '<div class="snapshot-item">' +
+      '<span class="snapshot-date">📅 ' + s.date + ' (' + s.entries + ' giornate)</span>' +
+      '<button class="btn-snapshot-restore" onclick="doRestoreSnapshot('' + s.key + '')">Ripristina</button>' +
+    '</div>'
+  ).join('');
+}
+
+async function doRestoreSnapshot(key) {
+  if (!confirm('Ripristinare questo snapshot? I dati attuali verranno mantenuti, verranno aggiunti quelli mancanti.')) return;
+  try {
+    await restoreSnapshot(key);
+    showToast('Snapshot ripristinato!', 'success');
+    await refreshDashboard();
+  } catch(e) {
+    showToast('Errore ripristino: ' + e.message, 'error');
+  }
+}
+
+async function doManualSnapshot() {
+  await saveSnapshot();
+  showToast('Snapshot salvato!', 'success');
+  await loadSnapshots();
+}
+
 async function saveSettings() {
   appSettings.employeeName         = document.getElementById('set-name').value.trim();
   appSettings.defaultContractHours = parseFloat(document.getElementById('set-hours').value) || 7.5;
@@ -599,7 +636,7 @@ async function navigate(view) {
     document.getElementById('report-month').value = currentMonth();
     await renderReport();
   }
-  if (view === 'settings')  await loadSettings();
+  if (view === 'settings')  { await loadSettings(); await loadSnapshots(); }
 }
 
 // =============================================

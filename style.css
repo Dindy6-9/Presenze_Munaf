@@ -961,3 +961,28 @@ select option { background: #1e293b; }
 select {
   color: var(--text) !important;
 }
+
+/* Snapshot */
+.snapshot-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.snapshot-item:last-child { border-bottom: none; }
+.snapshot-date { font-size: 13px; color: var(--text); }
+.btn-snapshot-restore {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-snapshot-restore:active { opacity: 0.8; }
