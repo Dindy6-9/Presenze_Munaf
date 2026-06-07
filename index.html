@@ -391,17 +391,6 @@
         onchange="importBackup(this.files[0])
           .then(()=>{ showToast('Backup ripristinato!','success'); this.value=''; })
           .catch(e=>showToast('Errore: '+e.message,'error'))">
-      <div class="settings-section" style="margin-top:12px;">
-        <div class="settings-section-title">📸 Snapshot automatici</div>
-      </div>
-      <div style="padding:0 16px 8px; font-size:12px; color:var(--subtext);">
-        L'app salva uno snapshot automatico ogni settimana. Conserva gli ultimi 4 (circa 1 mese).
-      </div>
-      <div style="padding:0 16px 12px;">
-        <button class="btn-backup" style="width:100%;" onclick="doManualSnapshot()">📸 Salva snapshot ora</button>
-      </div>
-      <div id="snapshot-list" style="padding:0 16px 16px;"></div>
-
       <div style="padding:16px; text-align:center; color:var(--subtext); font-size:12px;">
         Presenze MUNAF v1.0 — Dati salvati localmente sul dispositivo
       </div>
