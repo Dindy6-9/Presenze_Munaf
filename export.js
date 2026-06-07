@@ -34,37 +34,29 @@ function exportCSV(entries, year, month, employeeName) {
   const header = [
     'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate','Ore Arrotondate',
     'Malattia','Ferie','Assenza Recupero','Supplementari',
-    'Straordinario Diurno','Straordinario Notturno','Accantonate',
-    'Saldo Giornaliero','Trasferta','Note'
+    'Straordinario Diurno','Straordinario Notturno','Accantonate','Note'
   ].join(';');
 
   const rows = entries.map(function(e) {
-    const bal = calcDailyBalance(e);
-    const balStr = bal === 0 ? '' : (bal > 0 ? '+' : '') + fmtOre(bal);
-    const recup = e.recoveryAbsenceHours ? '-' + fmtOre(e.recoveryAbsenceHours) : '';
-    const mal   = e.sickHours    ? '-' + fmtOre(e.sickHours)    : '';
-    const ferie = e.holidayHours ? '-' + fmtOre(e.holidayHours) : '';
     return [
       getDayName(e.date),
       formatDateIT(e.date),
-      calcTicketCorretto(e) || '',
+      calcTicketCorretto(e),
       fmtOre(e.contractHours),
       fmtOre(e.workedHours),
       arrotondaQuarto(e.workedHours),
-      mal, ferie, recup,
+      e.sickHours            ? '-' + fmtOre(e.sickHours)            : '',
+      e.holidayHours         ? '-' + fmtOre(e.holidayHours)         : '',
+      e.recoveryAbsenceHours ? '-' + fmtOre(e.recoveryAbsenceHours) : '',
       fmtOre(e.supplementaryHours),
       fmtOre(e.overtimeDayHours),
       fmtOre(e.overtimeNightHours),
       fmtOre(e.accruedHours),
-      balStr,
-      e.travel ? 'Si' : '',
       (e.notes || '').split(';').join(',')
     ].join(';');
   });
 
   const totals = calcMonthlyTotals(entries);
-  const totBal = totals.balanceHours;
-  const totBalStr = totBal === 0 ? '0:00' : (totBal > 0 ? '+' : '') + fmtOre(totBal);
   const totRow = [
     'TOTALE','',
     entries.reduce(function(s,e){ return s + calcTicketCorretto(e); }, 0),
@@ -75,8 +67,7 @@ function exportCSV(entries, year, month, employeeName) {
     fmtOre(totals.supplementaryHours),
     fmtOre(totals.overtimeDayHours),
     fmtOre(totals.overtimeNightHours),
-    fmtOre(totals.accruedHours),
-    totBalStr, '', ''
+    fmtOre(totals.accruedHours), ''
   ].join(';');
 
   const csv = '\uFEFF' + [header].concat(rows).concat([totRow]).join('\r\n');
@@ -101,23 +92,21 @@ async function exportXLSX(entries, year, month, employeeName) {
     });
   }
 
-  const wb = window.XLSX.utils.book_new();
   const FMT_ORE = '[h]:mm';
-  const FMT_NEG = '-[h]:mm';
 
-  function cOra(n) {
-    if (!n || n === 0) return { v: null, t: 'z' };
-    return { v: n / 24, t: 'n', z: FMT_ORE };
+  // Converte ore decimali in valore Excel (ore/24) sommabile
+  function excelOre(n) {
+    if (!n || n === 0) return null;
+    return n / 24;
   }
 
-  function cOraNeg(n) {
-    // Assenze con segno negativo
-    if (!n || n === 0) return { v: null, t: 'z' };
-    return { v: -n / 24, t: 'n', z: FMT_NEG };
+  function excelOreNeg(n) {
+    if (!n || n === 0) return null;
+    return -(n / 24);
   }
 
-  function cOraArr(n) {
-    if (!n || n === 0) return { v: null, t: 'z' };
+  function excelArrotonda(n) {
+    if (!n || n === 0) return null;
     const h = Math.floor(n);
     const minTot = Math.round((n - h) * 60);
     let minArr, hArr;
@@ -126,134 +115,108 @@ async function exportXLSX(entries, year, month, employeeName) {
     else if (minTot < 38) { minArr = 30; hArr = h; }
     else if (minTot < 53) { minArr = 45; hArr = h; }
     else                  { minArr = 0;  hArr = h + 1; }
-    return { v: (hArr + minArr/60) / 24, t: 'n', z: FMT_ORE };
-  }
-
-  function cNum(n) {
-    if (!n || n === 0) return { v: null, t: 'z' };
-    return { v: n, t: 'n' };
+    return (hArr + minArr / 60) / 24;
   }
 
   const headers = [
-    'Giorno','Data','Ticket','Ore\nContratto','Ore\nLavorate','Ore\nArrotondate',
-    'Malattia','Ferie','Assenza\nRecupero','Supplementari',
-    'Straordinario\nDiurno','Straordinario\nNotturno','Accantonate',
-    'Saldo\nGiornaliero','Trasferta','Note'
+    'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate','Ore Arrotondate',
+    'Malattia','Ferie','Assenza Recupero','Supplementari',
+    'Straordinario Diurno','Straordinario Notturno','Accantonate','Note'
   ];
+
+  // Costruiamo il foglio manualmente come XML per supportare stili
+  const numCols = headers.length;
+  const colLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'];
 
   const wsData = [headers];
 
   entries.forEach(function(e) {
-    const bal = calcDailyBalance(e);
     wsData.push([
       getDayName(e.date),
       formatDateIT(e.date),
-      cNum(calcTicketCorretto(e)),
-      cOra(e.contractHours),
-      cOra(e.workedHours),
-      cOraArr(e.workedHours),
-      cOraNeg(e.sickHours),
-      cOraNeg(e.holidayHours),
-      cOraNeg(e.recoveryAbsenceHours),
-      cOra(e.supplementaryHours),
-      cOra(e.overtimeDayHours),
-      cOra(e.overtimeNightHours),
-      cOra(e.accruedHours),
-      bal !== 0 ? { v: bal / 24, t: 'n', z: FMT_ORE } : { v: null, t: 'z' },
-      e.travel ? 'Si' : '',
+      calcTicketCorretto(e),         // sempre 0 o 1
+      excelOre(e.contractHours),
+      excelOre(e.workedHours),
+      excelArrotonda(e.workedHours),
+      excelOreNeg(e.sickHours),
+      excelOreNeg(e.holidayHours),
+      excelOreNeg(e.recoveryAbsenceHours),
+      excelOre(e.supplementaryHours),
+      excelOre(e.overtimeDayHours),
+      excelOre(e.overtimeNightHours),
+      excelOre(e.accruedHours),
       (e.notes || '').split('\n').join(' ')
     ]);
   });
 
-  const lastDataRow = entries.length + 1;
+  const lastData = entries.length + 1;
+  const totals = calcMonthlyTotals(entries);
   wsData.push([
-    'TOTALE','',
+    'TOTALE', '',
     entries.reduce(function(s,e){ return s + calcTicketCorretto(e); }, 0),
-    { f: 'SUM(D2:D'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    { f: 'SUM(E2:E'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    { f: 'SUM(F2:F'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    { f: 'SUM(G2:G'+lastDataRow+')', t: 'n', z: FMT_NEG },
-    { f: 'SUM(H2:H'+lastDataRow+')', t: 'n', z: FMT_NEG },
-    { f: 'SUM(I2:I'+lastDataRow+')', t: 'n', z: FMT_NEG },
-    { f: 'SUM(J2:J'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    { f: 'SUM(K2:K'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    { f: 'SUM(L2:L'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    { f: 'SUM(M2:M'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    { f: 'SUM(N2:N'+lastDataRow+')', t: 'n', z: FMT_ORE },
-    '', ''
+    excelOre(totals.contractHours),
+    excelOre(totals.workedHours),
+    null,
+    excelOreNeg(totals.sickHours),
+    excelOreNeg(totals.holidayHours),
+    excelOreNeg(totals.recoveryHours),
+    excelOre(totals.supplementaryHours),
+    excelOre(totals.overtimeDayHours),
+    excelOre(totals.overtimeNightHours),
+    excelOre(totals.accruedHours),
+    ''
   ]);
 
+  const wb = window.XLSX.utils.book_new();
   const ws = window.XLSX.utils.aoa_to_sheet(wsData);
 
-  // Altezza riga intestazione per testo obliquo
-  ws['!rows'] = [{ hpt: 60 }];
+  // Applica formato ore a tutte le colonne ore (D-M tranne N testo)
+  const oreColumns = ['D','E','F','G','H','I','J','K','L','M'];
+  const totalRows = entries.length + 2;
+
+  for (let r = 2; r <= totalRows; r++) {
+    oreColumns.forEach(function(col) {
+      const ref = col + r;
+      if (ws[ref] && ws[ref].v !== null && ws[ref].v !== undefined) {
+        ws[ref].z = FMT_ORE;
+        ws[ref].t = 'n';
+      }
+    });
+    // Ticket: mostra sempre il valore (anche 0)
+    const ticketRef = 'C' + r;
+    if (ws[ticketRef]) ws[ticketRef].t = 'n';
+  }
 
   // Larghezze colonne
   ws['!cols'] = [
-    {wch:7},{wch:11},{wch:6},{wch:10},{wch:10},{wch:10},
-    {wch:10},{wch:8},{wch:10},{wch:11},
-    {wch:11},{wch:11},{wch:10},{wch:10},{wch:7},{wch:30}
+    {wch:7},{wch:11},{wch:7},{wch:10},{wch:10},{wch:10},
+    {wch:9},{wch:8},{wch:10},{wch:11},
+    {wch:11},{wch:11},{wch:10},{wch:30}
   ];
 
-  const totalRows = entries.length + 2; // header + dati + totale
-  const totalCols = 16;
-
-  // Stili per ogni cella
-  const BORDER = {
-    top:    { style: 'thin', color: { rgb: 'AAAAAA' } },
-    bottom: { style: 'thin', color: { rgb: 'AAAAAA' } },
-    left:   { style: 'thin', color: { rgb: 'AAAAAA' } },
-    right:  { style: 'thin', color: { rgb: 'AAAAAA' } }
-  };
-
-  const colLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
-
-  // Stile intestazione: obliquo + bordi + sfondo
-  for (let c = 0; c < totalCols; c++) {
-    const cellRef = colLetters[c] + '1';
-    if (ws[cellRef]) {
-      ws[cellRef].s = {
-        alignment: { textRotation: 60, vertical: 'bottom', wrapText: true },
-        fill: { fgColor: { rgb: '1E3A5F' } },
-        font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 9 },
-        border: BORDER
-      };
-    }
-  }
-
-  // Stile righe dati: bordi
-  for (let r = 2; r <= entries.length + 1; r++) {
-    for (let c = 0; c < totalCols; c++) {
-      const cellRef = colLetters[c] + r;
-      if (!ws[cellRef]) ws[cellRef] = { v: null, t: 'z' };
-      ws[cellRef].s = {
-        border: BORDER,
-        alignment: { horizontal: c < 2 ? 'left' : 'center' },
-        font: { sz: 9 }
-      };
-    }
-  }
-
-  // Stile riga totali: grassetto + sfondo + bordi
-  const totRow = entries.length + 2;
-  for (let c = 0; c < totalCols; c++) {
-    const cellRef = colLetters[c] + totRow;
-    if (!ws[cellRef]) ws[cellRef] = { v: null, t: 'z' };
-    ws[cellRef].s = {
-      border: {
-        top:    { style: 'medium', color: { rgb: '1E3A5F' } },
-        bottom: { style: 'medium', color: { rgb: '1E3A5F' } },
-        left:   { style: 'thin',   color: { rgb: 'AAAAAA' } },
-        right:  { style: 'thin',   color: { rgb: 'AAAAAA' } }
-      },
-      fill: { fgColor: { rgb: 'E8EEF5' } },
-      font: { bold: true, sz: 9 },
-      alignment: { horizontal: 'center' }
-    };
-  }
+  // Altezza riga intestazione
+  ws['!rows'] = [{ hpt: 45 }];
 
   window.XLSX.utils.book_append_sheet(wb, ws, MONTHS_IT[month-1] + ' ' + year);
-  window.XLSX.writeFile(wb, 'presenze_' + employeeName.split(' ').join('_') + '_' + MONTHS_IT[month-1] + '_' + year + '.xlsx');
+
+  // Scriviamo come xlsx e poi aggiungiamo stili via post-processing
+  const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+
+  // Converti in blob e scarica
+  function s2ab(s) {
+    const buf = new ArrayBuffer(s.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+    return buf;
+  }
+
+  const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'presenze_' + employeeName.split(' ').join('_') + '_' + MONTHS_IT[month-1] + '_' + year + '.xlsx';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ---- PDF ----
@@ -288,8 +251,8 @@ async function exportPDF(entries, year, month, employeeName) {
     { label: 'Malattia', w: 13 }, { label: 'Ferie', w: 11 },
     { label: 'Recupero', w: 13 }, { label: 'Suppl.', w: 11 },
     { label: 'Str.D', w: 12 }, { label: 'Str.N', w: 12 },
-    { label: 'Accant.', w: 12 }, { label: 'Saldo', w: 12 },
-    { label: 'Note', w: 30 }, { label: 'Firma', w: 28 }
+    { label: 'Accant.', w: 12 },
+    { label: 'Note', w: 33 }, { label: 'Firma', w: 28 }
   ];
 
   let y = 28;
@@ -317,24 +280,22 @@ async function exportPDF(entries, year, month, employeeName) {
 
     doc.setTextColor(40, 40, 60);
     x = ML;
-    const bal = calcDailyBalance(e);
-    const balStr = bal === 0 ? '' : (bal > 0 ? '+' : '') + fmtOre(bal);
 
     const vals = [
       getDayName(e.date), formatDateIT(e.date),
-      calcTicketCorretto(e) || '',
+      calcTicketCorretto(e),
       fmtOre(e.contractHours), fmtOre(e.workedHours),
       arrotondaQuarto(e.workedHours),
-      e.sickHours    ? '-' + fmtOre(e.sickHours)    : '',
-      e.holidayHours ? '-' + fmtOre(e.holidayHours) : '',
+      e.sickHours            ? '-' + fmtOre(e.sickHours)            : '',
+      e.holidayHours         ? '-' + fmtOre(e.holidayHours)         : '',
       e.recoveryAbsenceHours ? '-' + fmtOre(e.recoveryAbsenceHours) : '',
       fmtOre(e.supplementaryHours), fmtOre(e.overtimeDayHours),
       fmtOre(e.overtimeNightHours), fmtOre(e.accruedHours),
-      balStr, (e.notes || '').substring(0, 25), ''
+      (e.notes || '').substring(0, 28), ''
     ];
 
     vals.forEach(function(v, i) {
-      const str = String(v || '');
+      const str = String(v === 0 ? '0' : (v || ''));
       if (str) doc.text(str, x + cols[i].w / 2, y + 4.8, { align: 'center' });
       x += cols[i].w;
     });
@@ -347,8 +308,6 @@ async function exportPDF(entries, year, month, employeeName) {
   }
 
   const totals = calcMonthlyTotals(entries);
-  const totBal = totals.balanceHours;
-  const totBalStr = (totBal > 0 ? '+' : '') + fmtOre(totBal);
 
   doc.setFillColor(30, 58, 95);
   doc.rect(ML, y, COL_W, ROW_H + 1, 'F');
@@ -366,10 +325,10 @@ async function exportPDF(entries, year, month, employeeName) {
     fmtOre(totals.overtimeDayHours),
     fmtOre(totals.overtimeNightHours),
     fmtOre(totals.accruedHours),
-    totBalStr, '', ''
+    '', ''
   ];
   totVals.forEach(function(v, i) {
-    const str = String(v || '');
+    const str = String(v === 0 ? '0' : (v || ''));
     if (str) doc.text(str, x + cols[i].w / 2, y + 5.5, { align: 'center' });
     x += cols[i].w;
   });
