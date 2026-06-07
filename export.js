@@ -16,10 +16,23 @@ function fmtOre(n) {
   return `${sign}${h}:${String(m).padStart(2,'0')}`;
 }
 
+function arrotondaQuarto(workedHours) {
+  if (!workedHours || workedHours === 0) return '';
+  const h = Math.floor(workedHours);
+  const minTot = Math.round((workedHours - h) * 60);
+  let minArr, hArr;
+  if (minTot < 8)       { minArr = 0;  hArr = h; }
+  else if (minTot < 23) { minArr = 15; hArr = h; }
+  else if (minTot < 38) { minArr = 30; hArr = h; }
+  else if (minTot < 53) { minArr = 45; hArr = h; }
+  else                  { minArr = 0;  hArr = h + 1; }
+  return `${hArr}:${String(minArr).padStart(2,'0')}`;
+}
+
 // ---- CSV ----
 function exportCSV(entries, year, month, employeeName) {
   const header = [
-    'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate',
+    'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate','Ore Arrotondate',
     'Malattia','Ferie','Assenza Recupero','Supplementari',
     'Straordinario Diurno','Straordinario Notturno','Accantonate',
     'Saldo Giornaliero','Trasferta','Note'
@@ -34,6 +47,7 @@ function exportCSV(entries, year, month, employeeName) {
       calcTicketCorretto(e),
       fmtOre(e.contractHours),
       fmtOre(e.workedHours),
+      arrotondaQuarto(e.workedHours),
       fmtOre(e.sickHours),
       fmtOre(e.holidayHours),
       fmtOre(e.recoveryAbsenceHours),
@@ -53,7 +67,7 @@ function exportCSV(entries, year, month, employeeName) {
   const totRow = [
     'TOTALE','',
     entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
-    fmtOre(totals.contractHours), fmtOre(totals.workedHours),
+    fmtOre(totals.contractHours), fmtOre(totals.workedHours), '',
     fmtOre(totals.sickHours), fmtOre(totals.holidayHours),
     fmtOre(totals.recoveryHours), fmtOre(totals.supplementaryHours),
     fmtOre(totals.overtimeDayHours), fmtOre(totals.overtimeNightHours),
@@ -86,7 +100,7 @@ async function exportXLSX(entries, year, month, employeeName) {
   const wsData = [];
 
   wsData.push([
-    'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate (arrot.)',
+    'Giorno','Data','Ticket','Ore Contratto','Ore Lavorate','Ore Arrotondate',
     'Malattia','Ferie','Assenza Recupero','Supplementari',
     'Straordinario Diurno','Straordinario Notturno','Accantonate',
     'Saldo Giornaliero','Trasferta','Note'
@@ -101,6 +115,7 @@ async function exportXLSX(entries, year, month, employeeName) {
       calcTicketCorretto(e),
       fmtOre(e.contractHours),
       fmtOre(e.workedHours),
+      arrotondaQuarto(e.workedHours),
       fmtOre(e.sickHours),
       fmtOre(e.holidayHours),
       fmtOre(e.recoveryAbsenceHours),
@@ -120,7 +135,7 @@ async function exportXLSX(entries, year, month, employeeName) {
   wsData.push([
     'TOTALE','',
     entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
-    fmtOre(totals.contractHours), fmtOre(totals.workedHours),
+    fmtOre(totals.contractHours), fmtOre(totals.workedHours), '',
     fmtOre(totals.sickHours), fmtOre(totals.holidayHours),
     fmtOre(totals.recoveryHours), fmtOre(totals.supplementaryHours),
     fmtOre(totals.overtimeDayHours), fmtOre(totals.overtimeNightHours),
@@ -128,29 +143,8 @@ async function exportXLSX(entries, year, month, employeeName) {
   ]);
 
   const ws = window.XLSX.utils.aoa_to_sheet(wsData);
-
-  // Aggiungi formula di arrotondamento al quarto d'ora sulla colonna E (Ore Lavorate)
-  // dalla riga 2 fino all'ultima riga dati
-  for (let i = 2; i <= entries.length + 1; i++) {
-    const cellRef = `E${i}`;
-    if (ws[cellRef]) {
-      const valOre = entries[i-2].workedHours || 0;
-      const h = Math.floor(valOre);
-      const minTot = Math.round((valOre - h) * 60);
-      // Arrotonda al quarto d'ora
-      let minArr;
-      if (minTot < 8) minArr = 0;
-      else if (minTot < 23) minArr = 15;
-      else if (minTot < 38) minArr = 30;
-      else if (minTot < 53) minArr = 45;
-      else { minArr = 0; }
-      const oreArr = minTot >= 53 ? h + 1 : h;
-      ws[cellRef].v = `${oreArr}:${String(minArr).padStart(2,'0')}`;
-    }
-  }
-
   ws['!cols'] = [
-    {wch:8},{wch:12},{wch:8},{wch:12},{wch:16},
+    {wch:8},{wch:12},{wch:8},{wch:12},{wch:14},{wch:16},
     {wch:12},{wch:10},{wch:16},{wch:14},
     {wch:16},{wch:18},{wch:12},{wch:14},{wch:10},{wch:30}
   ];
@@ -185,14 +179,14 @@ async function exportPDF(entries, year, month, employeeName) {
   doc.text(`Dipendente: ${employeeName}    Mese: ${MONTHS_IT[month-1]} ${year}`, PAGE_W / 2, 17, { align: 'center' });
 
   const cols = [
-    { label: 'Giorno', w: 12 }, { label: 'Data', w: 18 },
-    { label: 'Ticket', w: 12 }, { label: 'Contr.', w: 14 },
-    { label: 'Lavorate', w: 14 }, { label: 'Malattia', w: 14 },
-    { label: 'Ferie', w: 12 }, { label: 'Recupero', w: 14 },
-    { label: 'Suppl.', w: 12 }, { label: 'Str.Diurno', w: 16 },
-    { label: 'Str.Nott.', w: 14 }, { label: 'Accant.', w: 13 },
-    { label: 'Saldo', w: 13 }, { label: 'Note', w: 36 },
-    { label: 'Firma', w: 32 }
+    { label: 'Giorno',    w: 11 }, { label: 'Data',      w: 16 },
+    { label: 'Ticket',    w: 10 }, { label: 'Contr.',    w: 12 },
+    { label: 'Lavorate',  w: 13 }, { label: 'Arrot.',    w: 12 },
+    { label: 'Malattia',  w: 13 }, { label: 'Ferie',     w: 11 },
+    { label: 'Recupero',  w: 13 }, { label: 'Suppl.',    w: 11 },
+    { label: 'Str.D',     w: 12 }, { label: 'Str.N',     w: 12 },
+    { label: 'Accant.',   w: 12 }, { label: 'Saldo',     w: 12 },
+    { label: 'Note',      w: 30 }, { label: 'Firma',     w: 28 }
   ];
 
   let y = 28;
@@ -227,10 +221,11 @@ async function exportPDF(entries, year, month, employeeName) {
       getDayName(e.date), formatDateIT(e.date),
       calcTicketCorretto(e) || '',
       fmtOre(e.contractHours), fmtOre(e.workedHours),
+      arrotondaQuarto(e.workedHours),
       fmtOre(e.sickHours), fmtOre(e.holidayHours), fmtOre(e.recoveryAbsenceHours),
       fmtOre(e.supplementaryHours), fmtOre(e.overtimeDayHours),
       fmtOre(e.overtimeNightHours), fmtOre(e.accruedHours),
-      balStr, (e.notes || '').substring(0, 28), ''
+      balStr, (e.notes || '').substring(0, 25), ''
     ];
 
     vals.forEach((v, i) => {
@@ -258,7 +253,7 @@ async function exportPDF(entries, year, month, employeeName) {
   const totVals = [
     'TOT', '',
     entries.reduce((s, e) => s + calcTicketCorretto(e), 0),
-    fmtOre(totals.contractHours), fmtOre(totals.workedHours),
+    fmtOre(totals.contractHours), fmtOre(totals.workedHours), '',
     fmtOre(totals.sickHours), fmtOre(totals.holidayHours),
     fmtOre(totals.recoveryHours), fmtOre(totals.supplementaryHours),
     fmtOre(totals.overtimeDayHours), fmtOre(totals.overtimeNightHours),
