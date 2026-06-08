@@ -228,7 +228,8 @@ async function onDateChange() {
   // Pausa = 0 automaticamente per sabato, domenica
   const dow = new Date(d + 'T00:00:00').getDay();
   const isWeekend = dow === 0 || dow === 6;
-  if (isWeekend) {
+  const isFestivoCheck = document.getElementById('entry-holiday-flag') && document.getElementById('entry-holiday-flag').checked;
+  if (isWeekend || isFestivoCheck) {
     document.getElementById('entry-break').value = 0;
   } else {
     if (!editingEntryId) {
