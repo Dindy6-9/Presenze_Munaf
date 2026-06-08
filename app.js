@@ -259,7 +259,7 @@ async function onDateChange() {
     });
     document.getElementById('travel-desc-row').style.display = 'none';
     document.getElementById('entry-contract').value = getContractHoursForDate(d);
-    document.getElementById('entry-break').value = (isWeekend || isFestivo) ? 0 : appSettings.defaultBreakMinutes;
+    document.getElementById('entry-break').value = (isWeekend || isFestivoCheck) ? 0 : appSettings.defaultBreakMinutes;
     updateCalcPreview();
   }
 }
